@@ -288,7 +288,7 @@ async function renderProduct(productId: string, lang: Lang = 'en'): Promise<Rend
 }
 
 /* ─── crypto checkout ─────────────────────────────────────────── */
-export async function renderBuyNetworks(productId: string, lang: Lang = 'en'): Promise<RenderedView> {
+export async function renderBuyNetworks(productId: string, lang: Lang = 'en', botUserId?: string): Promise<RenderedView> {
   const { data: p } = await db().from('products').select('name, price, stock, status').eq('id', productId).maybeSingle();
   if (!p || p.status !== 'active' || p.stock <= 0) {
     return { text: `${await e('status_error', '⚠️')} ${t(lang, 'product_unavailable')}`, reply_markup: await backMenu(lang) };
@@ -296,6 +296,16 @@ export async function renderBuyNetworks(productId: string, lang: Lang = 'en'): P
   const { data: wallets } = await db().from('wallets').select('id, network').eq('is_active', true);
   const have = new Set((wallets ?? []).map((w: any) => w.network));
   const rows: InlineKeyboard['inline_keyboard'] = [];
+
+  let balance = 0;
+  if (botUserId) {
+    const { data: u } = await db().from('bot_users').select('balance').eq('id', botUserId).maybeSingle();
+    balance = Number((u as any)?.balance ?? 0);
+    if (balance >= Number(p.price)) {
+      rows.push([await mkBtn('menu_wallet', '💰', `${t(lang, 'pay_with')} ${t(lang, 'wallet')} ($${balance.toFixed(2)})`, { callback_data: `wpay:${productId}` })]);
+    }
+  }
+
   for (const net of ['USDT_TRC20', 'USDT_BEP20', 'SOL'] as Network[]) {
     if (!have.has(net)) continue;
     rows.push([await mkBtn(NETWORK_KEY[net], '💠', `${t(lang, 'pay_with')} ${NETWORK_LABEL[net]}`, { callback_data: `pay:${net}:${productId}` })]);
@@ -305,8 +315,9 @@ export async function renderBuyNetworks(productId: string, lang: Lang = 'en'): P
   }
   rows.push(await navRow(lang));
 
+  const balanceLine = botUserId ? `${t(lang, 'balance')}: <b>$${balance.toFixed(2)}</b>\n\n` : '';
   return { text: `${await e('payment', '💳')} <b>${t(lang, 'choose_network')}</b>\n\n` +
-    `<b>${escapeHtml(p.name)}</b>\n${t(lang, 'amount')}: <b>$${p.price}</b>\n\n` +
+    `<b>${escapeHtml(p.name)}</b>\n${t(lang, 'amount')}: <b>$${p.price}</b>\n${balanceLine}` +
     `${t(lang, 'pay_intro')}`,
     reply_markup: { inline_keyboard: rows } };
 }
