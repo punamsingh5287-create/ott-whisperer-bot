@@ -479,12 +479,13 @@ async function renderSearchResults(query: string): Promise<RenderedView> {
 }
 
 async function renderView(state: NavState, botUserId: string, name?: string): Promise<RenderedView> {
-  if (!['support', 'search', 'payment', 'proof'].includes(state.screen)) {
+  if (!['support', 'search', 'payment', 'proof', 'deposit_proof'].includes(state.screen)) {
     await setFlowAction(botUserId, null);
   }
+  const lang = await getUserLang(botUserId);
 
   switch (state.screen) {
-    case 'home': return renderHome(name);
+    case 'home': return renderHome(name, lang);
     case 'categories': return renderCategories();
     case 'category': return renderCategoryProducts(state.params?.categoryId ?? '');
     case 'product': return renderProduct(state.params?.productId ?? '');
@@ -492,11 +493,11 @@ async function renderView(state: NavState, botUserId: string, name?: string): Pr
     case 'payment': return renderPayment(state.params?.productId ?? '', state.params?.network as Network, botUserId);
     case 'proof': return {
       text: `${await e('status_pending', '⏳')} <b>Payment proof</b>\n\nPlease reply with your <b>transaction hash</b> or send a <b>screenshot</b> of the payment.`,
-      reply_markup: await backMenu(),
+      reply_markup: await backMenu(lang),
     };
     case 'payment_review': return {
       text: `${await e('status_pending', '⏳')} <b>Payment under review</b>\n\nWe received your proof. An admin will verify shortly and update your order.`,
-      reply_markup: await backMenu(),
+      reply_markup: await backMenu(lang),
     };
     case 'orders': return renderOrders(botUserId);
     case 'profile': return renderProfile(botUserId);
@@ -504,11 +505,21 @@ async function renderView(state: NavState, botUserId: string, name?: string): Pr
     case 'support': return renderSupport(botUserId);
     case 'support_received': return {
       text: `${await e('status_success', '✅')} <b>Message received</b>\n\nOur team will reply here soon.`,
-      reply_markup: await backMenu(),
+      reply_markup: await backMenu(lang),
     };
     case 'search': return renderSearchPrompt(botUserId);
     case 'search_results': return renderSearchResults(state.params?.query ?? '');
-    default: return renderHome(name);
+    case 'language': return renderLanguage(lang);
+    case 'wallet': return renderWallet(botUserId, lang);
+    case 'deposit_proof': return {
+      text: `${await e('status_pending', '⏳')} <b>${t(lang, 'deposit')}</b>\n\n${t(lang, 'deposit_proof')}`,
+      reply_markup: await backMenu(lang),
+    };
+    case 'deposit_received': return {
+      text: `${await e('status_success', '✅')} ${t(lang, 'deposit_received')}`,
+      reply_markup: await backMenu(lang),
+    };
+    default: return renderHome(name, lang);
   }
 }
 
