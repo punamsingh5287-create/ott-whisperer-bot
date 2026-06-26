@@ -5,6 +5,7 @@ import {
 } from './gateway.server';
 import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
 import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavState, type RenderedView } from './navigation.server';
+import { LANGS, t, detect, type Lang } from './i18n';
 
 const INTRO_VIDEO_URL = 'https://project--0e9ed495-46e4-42a2-801a-3588d25b626e-dev.lovable.app/__l5e/assets-v1/86a1868b-601f-44d2-9070-0877a0fa3fff/bot-intro.mp4';
 
@@ -53,7 +54,7 @@ async function productEmoji(p: any): Promise<string> {
 /* ─── user upsert ─────────────────────────────────────────────── */
 function genReferralCode(telegramId: number) { return `R${telegramId.toString(36).toUpperCase()}`; }
 
-async function upsertBotUser(from: TgUser, startPayload?: string): Promise<string> {
+export async function upsertBotUser(from: TgUser & { language_code?: string }, startPayload?: string): Promise<string> {
   const supabase = db();
   const { data: existing } = await supabase
     .from('bot_users').select('id').eq('telegram_id', from.id).maybeSingle();
@@ -72,6 +73,7 @@ async function upsertBotUser(from: TgUser, startPayload?: string): Promise<strin
   const { data: inserted, error } = await supabase.from('bot_users').insert({
     telegram_id: from.id, username: from.username ?? null, first_name: from.first_name ?? null,
     referral_code: genReferralCode(from.id), referred_by: referredBy,
+    language: detect(from.language_code),
   }).select('id').single();
   if (error) throw error;
   if (referredBy) {
@@ -82,6 +84,15 @@ async function upsertBotUser(from: TgUser, startPayload?: string): Promise<strin
   return inserted.id as string;
 }
 
+async function getUserLang(botUserId: string): Promise<Lang> {
+  const { data } = await db().from('bot_users').select('language').eq('id', botUserId).maybeSingle();
+  return detect((data as any)?.language);
+}
+
+async function setUserLang(botUserId: string, lang: Lang) {
+  await db().from('bot_users').update({ language: lang }).eq('id', botUserId);
+}
+
 async function getSettings() {
   const { data } = await db().from('settings').select('*').eq('id', 1).maybeSingle();
   return data ?? { welcome_text: 'Welcome!', support_handle: '@support', site_name: 'OTT Store', bot_username: null };
@@ -90,42 +101,115 @@ async function getSettings() {
 /* ─── menus ───────────────────────────────────────────────────── */
 const MINI_APP_URL = process.env.MINI_APP_URL || 'https://project--0e9ed495-46e4-42a2-801a-3588d25b626e-dev.lovable.app/api/public/app';
 
-async function mainMenu(): Promise<InlineKeyboard> {
-  const [cats, search, orders, profile, ref, support, close] = await Promise.all([
-    mkBtn('menu_categories', '🗂', 'Categories', { callback_data: 'menu:cats' }),
-    mkBtn('menu_search', '🔎', 'Search', { callback_data: 'menu:search' }),
-    mkBtn('menu_orders', '🧾', 'My Orders', { callback_data: 'menu:orders' }),
-    mkBtn('menu_profile', '👤', 'Profile', { callback_data: 'menu:profile' }),
-    mkBtn('menu_referrals', '🎁', 'Referrals', { callback_data: 'menu:ref' }),
-    mkBtn('menu_support', '💬', 'Support', { callback_data: 'menu:support' }),
-    mkBtn('menu_close', '✕', 'Close', { callback_data: 'nav:close' }),
+async function mainMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
+  const [cats, search, orders, profile, wallet, ref, support, langBtn, close] = await Promise.all([
+    mkBtn('menu_categories', '🗂', t(lang, 'categories'), { callback_data: 'menu:cats' }),
+    mkBtn('menu_search', '🔎', t(lang, 'search'), { callback_data: 'menu:search' }),
+    mkBtn('menu_orders', '🧾', t(lang, 'my_orders'), { callback_data: 'menu:orders' }),
+    mkBtn('menu_profile', '👤', t(lang, 'profile'), { callback_data: 'menu:profile' }),
+    mkBtn('menu_wallet', '💰', t(lang, 'wallet'), { callback_data: 'menu:wallet' }),
+    mkBtn('menu_referrals', '🎁', t(lang, 'referrals'), { callback_data: 'menu:ref' }),
+    mkBtn('menu_support', '💬', t(lang, 'support'), { callback_data: 'menu:support' }),
+    mkBtn('menu_lang', '🌐', t(lang, 'language'), { callback_data: 'menu:lang' }),
+    mkBtn('menu_close', '✕', t(lang, 'close'), { callback_data: 'nav:close' }),
   ]);
-  const openApp = { text: '🚀  Open Store App', web_app: { url: MINI_APP_URL } } as any;
-  return { inline_keyboard: [[openApp], [cats, search], [orders, profile], [ref, support], [close]] };
+  const openApp = { text: `🚀  ${t(lang, 'open_app')}`, web_app: { url: MINI_APP_URL } } as any;
+  return { inline_keyboard: [[openApp], [cats, search], [orders, wallet], [profile, ref], [support, langBtn], [close]] };
 }
 
-async function navRow(includeHome = true): Promise<InlineKeyboard['inline_keyboard'][number]> {
-  const buttons = [await mkBtn('menu_back', '‹', 'Back', { callback_data: 'nav:back' })];
-  if (includeHome) buttons.push(await mkBtn('menu_home', '🏠', 'Home', { callback_data: 'menu:home' }));
-  buttons.push(await mkBtn('menu_close', '✕', 'Close', { callback_data: 'nav:close' }));
+async function navRow(lang: Lang = 'en', includeHome = true): Promise<InlineKeyboard['inline_keyboard'][number]> {
+  const buttons = [await mkBtn('menu_back', '‹', t(lang, 'back'), { callback_data: 'nav:back' })];
+  if (includeHome) buttons.push(await mkBtn('menu_home', '🏠', t(lang, 'home'), { callback_data: 'menu:home' }));
+  buttons.push(await mkBtn('menu_close', '✕', t(lang, 'close'), { callback_data: 'nav:close' }));
   return buttons;
 }
 
-async function backMenu(): Promise<InlineKeyboard> {
-  return { inline_keyboard: [await navRow()] };
+async function backMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
+  return { inline_keyboard: [await navRow(lang)] };
 }
 
 
 /* ─── views ───────────────────────────────────────────────────── */
-async function renderHome(name?: string): Promise<RenderedView> {
+async function renderHome(name?: string, lang: Lang = 'en'): Promise<RenderedView> {
   const s = await getSettings();
   const welcome = await e('welcome', '✨');
   const greet = name ? `, <b>${escapeHtml(name)}</b>` : '';
   const text =
     `${welcome}  <b>${escapeHtml(s.site_name || s.bot_name || 'OTT & AI Store')}</b>\n\n` +
-    `Hey${greet}! ${escapeHtml(s.welcome_text || '')}\n\n` +
-    `Browse premium <b>OTT</b>, <b>AI</b>, <b>Gaming</b> & <b>Utility</b> subscriptions. Instant delivery, crypto-friendly checkout.`;
-  return { text, reply_markup: await mainMenu() };
+    `${t(lang, 'hey')}${greet}! ${escapeHtml(s.welcome_text || '')}\n\n` +
+    `${t(lang, 'browse')}`;
+  return { text, reply_markup: await mainMenu(lang) };
+}
+
+async function renderLanguage(lang: Lang): Promise<RenderedView> {
+  const rows: InlineKeyboard['inline_keyboard'] = LANGS.map((L) => [{ text: `${L.flag}  ${L.name}${L.code === lang ? '  ✓' : ''}`, callback_data: `lang:${L.code}` }]);
+  rows.push(await navRow(lang));
+  return {
+    text: `🌐  <b>${t(lang, 'language')}</b>\n\n${t(lang, 'choose_lang')}`,
+    reply_markup: { inline_keyboard: rows },
+  };
+}
+
+async function renderWallet(botUserId: string, lang: Lang): Promise<RenderedView> {
+  const supabase = db();
+  const [{ data: u }, { data: wallets }] = await Promise.all([
+    supabase.from('bot_users').select('balance, total_spent').eq('id', botUserId).maybeSingle(),
+    supabase.from('wallets').select('id, network, address, label').eq('is_active', true),
+  ]);
+  const balance = Number((u as any)?.balance ?? 0);
+  const spent = Number((u as any)?.total_spent ?? 0);
+  const ws = (wallets ?? []) as any[];
+
+  const networkLines = ws.length
+    ? ws.map((w) => `<b>${NETWORK_LABEL[w.network as Network] || w.network}</b>${w.label ? ` · ${escapeHtml(w.label)}` : ''}\n<code>${escapeHtml(w.address)}</code>`).join('\n\n')
+    : t(lang, 'no_wallets');
+
+  const text =
+    `💰  <b>${t(lang, 'wallet')}</b>\n\n` +
+    `${t(lang, 'balance')}: <b>$${balance.toFixed(2)}</b>\n` +
+    `Total spent: <b>$${spent.toFixed(2)}</b>\n\n` +
+    `<b>${t(lang, 'deposit')}</b>\n${t(lang, 'deposit_info')}\n\n${networkLines}`;
+
+  const rows: InlineKeyboard['inline_keyboard'] = [];
+  if (ws.length) rows.push([{ text: `✅  ${t(lang, 'deposited')}`, callback_data: 'wallet:deposited' }]);
+  rows.push(await navRow(lang));
+  return { text, reply_markup: { inline_keyboard: rows } };
+}
+
+async function captureDepositProof(chatId: number, botUserId: string, opts: { text?: string; photoFileId?: string }) {
+  const supabase = db();
+  const lang = await getUserLang(botUserId);
+  let screenshotUrl: string | null = null;
+  if (opts.photoFileId) {
+    try {
+      const f = await getFile(opts.photoFileId);
+      const filePath = f?.result?.file_path as string | undefined;
+      if (filePath) {
+        const bytes = await downloadFile(filePath);
+        const ext = filePath.split('.').pop() || 'jpg';
+        const objKey = `topup-${botUserId}-${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('payment-proofs').upload(
+          objKey, new Uint8Array(bytes), { contentType: `image/${ext}`, upsert: false },
+        );
+        if (!upErr) screenshotUrl = objKey;
+      }
+    } catch (e) { console.error('topup proof upload failed', e); }
+  }
+  const { data: w } = await supabase.from('wallets').select('id, network').eq('is_active', true).limit(1).maybeSingle();
+  await supabase.from('wallet_topups').insert({
+    bot_user_id: botUserId,
+    wallet_id: (w as any)?.id ?? null,
+    network: (w as any)?.network ?? 'USDT_TRC20',
+    amount: 0,
+    tx_hash: opts.text ?? null,
+    screenshot_url: screenshotUrl,
+    status: 'pending',
+  });
+  await setFlowAction(botUserId, null);
+  const edited = await navigateTo({ botUserId, chatId, state: { screen: 'deposit_received' }, replace: true });
+  if (!edited) {
+    await sendMessage(chatId, `${await e('status_success', '✅')} ${t(lang, 'deposit_received')}`, { reply_markup: await backMenu(lang) });
+  }
 }
 
 // Premium button icons are added when Telegram supports them; gateway retries safely without icons otherwise.
@@ -206,7 +290,7 @@ async function renderProduct(productId: string): Promise<RenderedView> {
 }
 
 /* ─── crypto checkout ─────────────────────────────────────────── */
-async function renderBuyNetworks(productId: string): Promise<RenderedView> {
+export async function renderBuyNetworks(productId: string): Promise<RenderedView> {
   const { data: p } = await db().from('products').select('name, price, stock, status').eq('id', productId).maybeSingle();
   if (!p || p.status !== 'active' || p.stock <= 0) {
     return { text: `${await e('status_error', '⚠️')} This product is unavailable.`, reply_markup: await backMenu() };
@@ -395,12 +479,13 @@ async function renderSearchResults(query: string): Promise<RenderedView> {
 }
 
 async function renderView(state: NavState, botUserId: string, name?: string): Promise<RenderedView> {
-  if (!['support', 'search', 'payment', 'proof'].includes(state.screen)) {
+  if (!['support', 'search', 'payment', 'proof', 'deposit_proof'].includes(state.screen)) {
     await setFlowAction(botUserId, null);
   }
+  const lang = await getUserLang(botUserId);
 
   switch (state.screen) {
-    case 'home': return renderHome(name);
+    case 'home': return renderHome(name, lang);
     case 'categories': return renderCategories();
     case 'category': return renderCategoryProducts(state.params?.categoryId ?? '');
     case 'product': return renderProduct(state.params?.productId ?? '');
@@ -408,11 +493,11 @@ async function renderView(state: NavState, botUserId: string, name?: string): Pr
     case 'payment': return renderPayment(state.params?.productId ?? '', state.params?.network as Network, botUserId);
     case 'proof': return {
       text: `${await e('status_pending', '⏳')} <b>Payment proof</b>\n\nPlease reply with your <b>transaction hash</b> or send a <b>screenshot</b> of the payment.`,
-      reply_markup: await backMenu(),
+      reply_markup: await backMenu(lang),
     };
     case 'payment_review': return {
       text: `${await e('status_pending', '⏳')} <b>Payment under review</b>\n\nWe received your proof. An admin will verify shortly and update your order.`,
-      reply_markup: await backMenu(),
+      reply_markup: await backMenu(lang),
     };
     case 'orders': return renderOrders(botUserId);
     case 'profile': return renderProfile(botUserId);
@@ -420,11 +505,21 @@ async function renderView(state: NavState, botUserId: string, name?: string): Pr
     case 'support': return renderSupport(botUserId);
     case 'support_received': return {
       text: `${await e('status_success', '✅')} <b>Message received</b>\n\nOur team will reply here soon.`,
-      reply_markup: await backMenu(),
+      reply_markup: await backMenu(lang),
     };
     case 'search': return renderSearchPrompt(botUserId);
     case 'search_results': return renderSearchResults(state.params?.query ?? '');
-    default: return renderHome(name);
+    case 'language': return renderLanguage(lang);
+    case 'wallet': return renderWallet(botUserId, lang);
+    case 'deposit_proof': return {
+      text: `${await e('status_pending', '⏳')} <b>${t(lang, 'deposit')}</b>\n\n${t(lang, 'deposit_proof')}`,
+      reply_markup: await backMenu(lang),
+    };
+    case 'deposit_received': return {
+      text: `${await e('status_success', '✅')} ${t(lang, 'deposit_received')}`,
+      reply_markup: await backMenu(lang),
+    };
+    default: return renderHome(name, lang);
   }
 }
 
@@ -518,12 +613,36 @@ export async function handleMessage(message: any) {
   const startPayload = text.startsWith('/start') ? text.split(' ')[1] : undefined;
   const botUserId = await upsertBotUser(message.from, startPayload);
 
+  // Mini App → bot data bridge
+  if (message.web_app_data?.data) {
+    let payload: any = null;
+    try { payload = JSON.parse(message.web_app_data.data); } catch { payload = { raw: message.web_app_data.data }; }
+    if (payload?.action === 'buy' && payload.product_id) {
+      await navigateTo({ botUserId, chatId, state: { screen: 'buy', params: { productId: payload.product_id } }, forceNewMessage: true });
+      return;
+    }
+    if (payload?.action === 'lang' && payload.lang) {
+      await setUserLang(botUserId, detect(payload.lang));
+      await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true });
+      return;
+    }
+    if (payload?.action === 'deposit') {
+      await navigateTo({ botUserId, chatId, state: { screen: 'wallet' }, forceNewMessage: true });
+      return;
+    }
+  }
+
   const pending = await getFlowAction<{ type?: string; payment_id?: string }>(botUserId);
 
-  // Photo upload → if user is in payment_proof mode, treat as proof
+  // Photo upload → if user is in payment_proof / deposit_proof mode, treat as proof
   if (message.photo?.length && pending?.type === 'payment_proof' && pending.payment_id) {
     const largest = message.photo[message.photo.length - 1];
     await capturePaymentProof(chatId, botUserId, pending.payment_id, { photoFileId: largest.file_id, text: text || undefined });
+    return;
+  }
+  if (message.photo?.length && pending?.type === 'deposit_proof') {
+    const largest = message.photo[message.photo.length - 1];
+    await captureDepositProof(chatId, botUserId, { photoFileId: largest.file_id, text: text || undefined });
     return;
   }
 
@@ -535,6 +654,9 @@ export async function handleMessage(message: any) {
     if (pending.type === 'support_message') { await captureSupportMessage(chatId, botUserId, text); return; }
     if (pending.type === 'payment_proof' && pending.payment_id && text) {
       await capturePaymentProof(chatId, botUserId, pending.payment_id, { text }); return;
+    }
+    if (pending.type === 'deposit_proof' && text) {
+      await captureDepositProof(chatId, botUserId, { text }); return;
     }
   }
 
@@ -549,6 +671,8 @@ export async function handleMessage(message: any) {
   if (text.startsWith('/profile')) { await navigateTo({ botUserId, chatId, state: { screen: 'profile' }, forceNewMessage: true }); return; }
   if (text.startsWith('/referrals')) { await navigateTo({ botUserId, chatId, state: { screen: 'referrals' }, forceNewMessage: true }); return; }
   if (text.startsWith('/support')) { await navigateTo({ botUserId, chatId, state: { screen: 'support' }, forceNewMessage: true }); return; }
+  if (text.startsWith('/wallet')) { await navigateTo({ botUserId, chatId, state: { screen: 'wallet' }, forceNewMessage: true }); return; }
+  if (text.startsWith('/language') || text.startsWith('/lang')) { await navigateTo({ botUserId, chatId, state: { screen: 'language' }, forceNewMessage: true }); return; }
   if (text.startsWith('/search')) {
     const q = text.slice(7).trim();
     if (q) await navigateTo({ botUserId, chatId, state: { screen: 'search_results', params: { query: q } }, forceNewMessage: true });
@@ -585,6 +709,21 @@ export async function handleCallback(cb: any) {
   if (data === 'menu:profile') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'profile' } }); return; }
   if (data === 'menu:ref') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'referrals' } }); return; }
   if (data === 'menu:support') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'support' } }); return; }
+  if (data === 'menu:wallet') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'wallet' } }); return; }
+  if (data === 'menu:lang') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'language' } }); return; }
+  if (data.startsWith('lang:')) {
+    const newLang = detect(data.slice(5));
+    await setUserLang(botUserId, newLang);
+    await answerCallback(cb.id, t(newLang, 'lang_saved'));
+    await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'home' }, name: cb.from.first_name, reset: true });
+    return;
+  }
+  if (data === 'wallet:deposited') {
+    await answerCallback(cb.id);
+    await setFlowAction(botUserId, { type: 'deposit_proof' });
+    await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'deposit_proof' }, replace: true });
+    return;
+  }
 
   if (data.startsWith('cat:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'category', params: { categoryId: data.slice(4) } } }); return; }
   if (data.startsWith('prod:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'product', params: { productId: data.slice(5) } } }); return; }
