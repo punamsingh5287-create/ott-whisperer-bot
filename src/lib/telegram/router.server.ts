@@ -3,7 +3,7 @@ import {
   sendMessage, sendPhoto, editMessage, answerCallback, getMe, getFile, downloadFile,
   type InlineKeyboard,
 } from './gateway.server';
-import { renderEmoji, escapeHtml, e, eb } from './emoji';
+import { renderEmoji, escapeHtml, e, eb, mkBtn } from './emoji';
 
 type TgUser = { id: number; username?: string; first_name?: string };
 type Network = 'USDT_TRC20' | 'USDT_BEP20' | 'SOL';
