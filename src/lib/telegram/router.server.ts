@@ -145,11 +145,10 @@ async function renderProduct(productId: string): Promise<RenderedView> {
   const emoji = renderEmoji(p.premium_emoji_id, p.fallback_emoji);
   const stockLine = p.stock > 0 ? `✅ In stock (${p.stock})` : `⛔ Out of stock`;
   const tagLine = (p.tags?.length) ? `\n🏷 ${p.tags.map((t: string) => `<code>${escapeHtml(t)}</code>`).join(' ')}` : '';
-  const imageLine = p.image_url ? `<a href="${escapeHtml(p.image_url)}">\u200B</a>` : '';
   const text =
     `${emoji}  <b>${escapeHtml(p.name)}</b>\n\n` +
     `${escapeHtml(p.description || '')}\n\n` +
-    `💰 <b>$${p.price}</b>\n⏳ ${p.duration_days} days\n${stockLine}${tagLine}${imageLine}`;
+    `💰 <b>$${p.price}</b>\n⏳ ${p.duration_days} days\n${stockLine}${tagLine}`;
   const buy = await mkBtn('action_buy', '🛒', `Buy now — $${p.price}`, { callback_data: `buy:${p.id}` });
   const kb: InlineKeyboard = {
     inline_keyboard: [
