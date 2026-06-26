@@ -18,29 +18,130 @@ export type Database = {
         Row: {
           first_name: string | null
           id: string
+          is_banned: boolean
           is_subscribed: boolean
           joined_at: string
           last_active: string
+          pending_action: Json | null
+          referral_code: string | null
+          referred_by: string | null
           telegram_id: number
+          total_spent: number
           username: string | null
         }
         Insert: {
           first_name?: string | null
           id?: string
+          is_banned?: boolean
           is_subscribed?: boolean
           joined_at?: string
           last_active?: string
+          pending_action?: Json | null
+          referral_code?: string | null
+          referred_by?: string | null
           telegram_id: number
+          total_spent?: number
           username?: string | null
         }
         Update: {
           first_name?: string | null
           id?: string
+          is_banned?: boolean
           is_subscribed?: boolean
           joined_at?: string
           last_active?: string
+          pending_action?: Json | null
+          referral_code?: string | null
+          referred_by?: string | null
           telegram_id?: number
+          total_spent?: number
           username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_users_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "bot_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broadcasts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          failed_count: number
+          fallback_emoji: string | null
+          id: string
+          message: string
+          premium_emoji_id: string | null
+          sent_count: number
+          status: string
+          target: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          fallback_emoji?: string | null
+          id?: string
+          message: string
+          premium_emoji_id?: string | null
+          sent_count?: number
+          status?: string
+          target?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          failed_count?: number
+          fallback_emoji?: string | null
+          id?: string
+          message?: string
+          premium_emoji_id?: string | null
+          sent_count?: number
+          status?: string
+          target?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      categories: {
+        Row: {
+          created_at: string
+          icon_emoji: string | null
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          icon_emoji?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          icon_emoji?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -82,6 +183,57 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "pricing_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          amount: number
+          bot_user_id: string | null
+          created_at: string
+          delivery_payload: string | null
+          id: string
+          product_id: string | null
+          status: string
+          telegram_message_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          bot_user_id?: string | null
+          created_at?: string
+          delivery_payload?: string | null
+          id?: string
+          product_id?: string | null
+          status?: string
+          telegram_message_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          bot_user_id?: string | null
+          created_at?: string
+          delivery_payload?: string | null
+          id?: string
+          product_id?: string | null
+          status?: string
+          telegram_message_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_bot_user_id_fkey"
+            columns: ["bot_user_id"]
+            isOneToOne: false
+            referencedRelation: "bot_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -155,6 +307,71 @@ export type Database = {
         }
         Relationships: []
       }
+      products: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          description: string | null
+          duration_days: number
+          fallback_emoji: string | null
+          id: string
+          image_url: string | null
+          name: string
+          premium_emoji_id: string | null
+          price: number
+          slug: string
+          sort_order: number
+          status: string
+          stock: number
+          tags: string[]
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          duration_days?: number
+          fallback_emoji?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          premium_emoji_id?: string | null
+          price?: number
+          slug: string
+          sort_order?: number
+          status?: string
+          stock?: number
+          tags?: string[]
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          duration_days?: number
+          fallback_emoji?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          premium_emoji_id?: string | null
+          price?: number
+          slug?: string
+          sort_order?: number
+          status?: string
+          stock?: number
+          tags?: string[]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -172,6 +389,145 @@ export type Database = {
           id?: string
         }
         Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referred_bot_user_id: string
+          referrer_bot_user_id: string
+          reward_status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referred_bot_user_id: string
+          referrer_bot_user_id: string
+          reward_status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referred_bot_user_id?: string
+          referrer_bot_user_id?: string
+          reward_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_bot_user_id_fkey"
+            columns: ["referred_bot_user_id"]
+            isOneToOne: true
+            referencedRelation: "bot_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_bot_user_id_fkey"
+            columns: ["referrer_bot_user_id"]
+            isOneToOne: false
+            referencedRelation: "bot_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      settings: {
+        Row: {
+          bot_name: string | null
+          bot_username: string | null
+          id: number
+          referral_reward: number
+          support_handle: string | null
+          updated_at: string
+          welcome_text: string | null
+        }
+        Insert: {
+          bot_name?: string | null
+          bot_username?: string | null
+          id?: number
+          referral_reward?: number
+          support_handle?: string | null
+          updated_at?: string
+          welcome_text?: string | null
+        }
+        Update: {
+          bot_name?: string | null
+          bot_username?: string | null
+          id?: number
+          referral_reward?: number
+          support_handle?: string | null
+          updated_at?: string
+          welcome_text?: string | null
+        }
+        Relationships: []
+      }
+      support_messages: {
+        Row: {
+          body: string
+          created_at: string
+          from_admin: boolean
+          id: string
+          ticket_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          from_admin?: boolean
+          id?: string
+          ticket_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          from_admin?: boolean
+          id?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          bot_user_id: string | null
+          created_at: string
+          id: string
+          last_message: string | null
+          status: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          bot_user_id?: string | null
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Update: {
+          bot_user_id?: string | null
+          created_at?: string
+          id?: string
+          last_message?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_bot_user_id_fkey"
+            columns: ["bot_user_id"]
+            isOneToOne: false
+            referencedRelation: "bot_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -205,6 +561,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      purchase_product: {
+        Args: { _bot_user_id: string; _product_id: string }
+        Returns: {
+          amount: number
+          error: string
+          order_id: string
+          product_name: string
+        }[]
       }
     }
     Enums: {
