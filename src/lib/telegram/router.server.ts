@@ -163,7 +163,7 @@ async function renderWallet(botUserId: string, lang: Lang): Promise<RenderedView
   const text =
     `💰  <b>${t(lang, 'wallet')}</b>\n\n` +
     `${t(lang, 'balance')}: <b>$${balance.toFixed(2)}</b>\n` +
-    `Total spent: <b>$${spent.toFixed(2)}</b>\n\n` +
+    `${t(lang, 'total_spent')}: <b>$${spent.toFixed(2)}</b>\n\n` +
     `<b>${t(lang, 'deposit')}</b>\n${t(lang, 'deposit_info')}\n\n${networkLines}`;
 
   const rows: InlineKeyboard['inline_keyboard'] = [];
@@ -211,7 +211,7 @@ async function captureDepositProof(chatId: number, botUserId: string, opts: { te
 // Premium button icons are added when Telegram supports them; gateway retries safely without icons otherwise.
 
 
-async function renderCategories(): Promise<RenderedView> {
+async function renderCategories(lang: Lang = 'en'): Promise<RenderedView> {
   const { data } = await db().from('categories')
     .select('id, name, slug, icon_emoji, premium_emoji_id').eq('is_active', true).order('sort_order');
   const cats = data ?? [];
@@ -222,16 +222,16 @@ async function renderCategories(): Promise<RenderedView> {
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...categoryRows,
-      await navRow(),
+      await navRow(lang),
     ],
   };
   const text = categoryLines.length
-    ? `${await e('menu_categories', '🗂')}  <b>Categories</b>\n\n${categoryLines.join('\n')}\n\nChoose a category below:`
-    : `${await e('menu_categories', '🗂')}  <b>Categories</b>\n\nNo categories available yet.`;
+    ? `${await e('menu_categories', '🗂')}  <b>${t(lang, 'categories')}</b>\n\n${categoryLines.join('\n')}\n\n${t(lang, 'cats_choose')}`
+    : `${await e('menu_categories', '🗂')}  <b>${t(lang, 'categories')}</b>\n\n${t(lang, 'cats_empty')}`;
   return { text, reply_markup: kb };
 }
 
-async function renderCategoryProducts(categoryId: string): Promise<RenderedView> {
+async function renderCategoryProducts(categoryId: string, lang: Lang = 'en'): Promise<RenderedView> {
   const supabase = db();
   const [{ data: cat }, { data: prods }] = await Promise.all([
     supabase.from('categories').select('name, slug, icon_emoji, premium_emoji_id').eq('id', categoryId).maybeSingle(),
@@ -239,28 +239,30 @@ async function renderCategoryProducts(categoryId: string): Promise<RenderedView>
       .eq('category_id', categoryId).eq('status', 'active').order('sort_order').limit(50),
   ]);
   const items = prods ?? [];
+  const soldOut = t(lang, 'sold_out');
   const productLines = await Promise.all(items.map(async (p: any) => (
-    `${await productEmoji(p)} <b>${escapeHtml(p.name)}</b> — <b>$${p.price}</b>${p.stock <= 0 ? ' · sold out' : ''}`
+    `${await productEmoji(p)} <b>${escapeHtml(p.name)}</b> — <b>$${p.price}</b>${p.stock <= 0 ? ` · ${soldOut}` : ''}`
   )));
   const productRows = await Promise.all(items.map(async (p: any) => {
-    const label = `${p.name} — $${p.price}${p.stock <= 0 ? ' (sold out)' : ''}`;
+    const label = `${p.name} — $${p.price}${p.stock <= 0 ? ` (${soldOut})` : ''}`;
     return [await mkEmojiBtn(p.fallback_emoji || '✨', label, { callback_data: `prod:${p.id}` }, p.premium_emoji_id)];
   }));
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...productRows,
-      await navRow(),
+      await navRow(lang),
     ],
   };
-  const header = `${cat ? await categoryEmoji(cat) : await e('category_default', '📦')} <b>${escapeHtml(cat?.name || 'Products')}</b>`;
-  const text = items.length ? `${header}\n\n${productLines.join('\n')}\n\nTap a product below for details:` : `${header}\n\nNo products available yet.`;
+  const header = `${cat ? await categoryEmoji(cat) : await e('category_default', '📦')} <b>${escapeHtml(cat?.name || t(lang, 'categories'))}</b>`;
+  const text = items.length ? `${header}\n\n${productLines.join('\n')}\n\n${t(lang, 'prods_choose')}` : `${header}\n\n${t(lang, 'prods_empty')}`;
   return { text, reply_markup: kb };
 }
 
 
-async function renderProduct(productId: string): Promise<RenderedView> {
+
+async function renderProduct(productId: string, lang: Lang = 'en'): Promise<RenderedView> {
   const { data: p } = await db().from('products').select('*, categories(name, icon_emoji)').eq('id', productId).maybeSingle();
-  if (!p) return { text: `${await e('status_error', '⚠️')} Product not found.`, reply_markup: await backMenu() };
+  if (!p) return { text: `${await e('status_error', '⚠️')} ${t(lang, 'product_not_found')}`, reply_markup: await backMenu(lang) };
   const emoji = await productEmoji(p);
   const [stockIcon, outStock, priceIcon, durationIcon, tagIcon] = await Promise.all([
     e('stock', '📦'),
@@ -269,47 +271,47 @@ async function renderProduct(productId: string): Promise<RenderedView> {
     e('duration', '📅'),
     e('tag', '🏷'),
   ]);
-  const stockLine = p.stock > 0 ? `${stockIcon} In stock (${p.stock})` : `${outStock} Out of stock`;
-  const tagLine = (p.tags?.length) ? `\n${tagIcon} ${p.tags.map((t: string) => `<code>${escapeHtml(t)}</code>`).join(' ')}` : '';
+  const stockLine = p.stock > 0 ? `${stockIcon} ${t(lang, 'in_stock')} (${p.stock})` : `${outStock} ${t(lang, 'out_of_stock')}`;
+  const tagLine = (p.tags?.length) ? `\n${tagIcon} ${p.tags.map((tg: string) => `<code>${escapeHtml(tg)}</code>`).join(' ')}` : '';
   const text =
     `${emoji}  <b>${escapeHtml(p.name)}</b>\n\n` +
     `${escapeHtml(p.description || '')}\n\n` +
-    `${priceIcon} <b>$${p.price}</b>\n${durationIcon} ${p.duration_days} days\n${stockLine}${tagLine}`;
-  const buy = await mkBtn('action_buy', '🛒', `Buy now — $${p.price}`, { callback_data: `buy:${p.id}` });
+    `${priceIcon} <b>$${p.price}</b>\n${durationIcon} ${p.duration_days} ${t(lang, 'days')}\n${stockLine}${tagLine}`;
+  const buy = await mkBtn('action_buy', '🛒', `${t(lang, 'buy_now')} — $${p.price}`, { callback_data: `buy:${p.id}` });
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...(p.stock > 0 ? [[buy]] : []),
-      await navRow(),
+      await navRow(lang),
     ],
   };
   return { text, reply_markup: kb };
 }
 
 /* ─── crypto checkout ─────────────────────────────────────────── */
-export async function renderBuyNetworks(productId: string): Promise<RenderedView> {
+export async function renderBuyNetworks(productId: string, lang: Lang = 'en'): Promise<RenderedView> {
   const { data: p } = await db().from('products').select('name, price, stock, status').eq('id', productId).maybeSingle();
   if (!p || p.status !== 'active' || p.stock <= 0) {
-    return { text: `${await e('status_error', '⚠️')} This product is unavailable.`, reply_markup: await backMenu() };
+    return { text: `${await e('status_error', '⚠️')} ${t(lang, 'product_unavailable')}`, reply_markup: await backMenu(lang) };
   }
   const { data: wallets } = await db().from('wallets').select('id, network').eq('is_active', true);
   const have = new Set((wallets ?? []).map((w: any) => w.network));
   const rows: InlineKeyboard['inline_keyboard'] = [];
   for (const net of ['USDT_TRC20', 'USDT_BEP20', 'SOL'] as Network[]) {
     if (!have.has(net)) continue;
-    rows.push([await mkBtn(NETWORK_KEY[net], '💠', `Pay with ${NETWORK_LABEL[net]}`, { callback_data: `pay:${net}:${productId}` })]);
+    rows.push([await mkBtn(NETWORK_KEY[net], '💠', `${t(lang, 'pay_with')} ${NETWORK_LABEL[net]}`, { callback_data: `pay:${net}:${productId}` })]);
   }
   if (rows.length === 0) {
-    return { text: `${await e('status_error', '⚠️')} No payment networks configured. Contact support.`, reply_markup: await backMenu() };
+    return { text: `${await e('status_error', '⚠️')} ${t(lang, 'no_networks')}`, reply_markup: await backMenu(lang) };
   }
-  rows.push(await navRow());
+  rows.push(await navRow(lang));
 
-  return { text: `${await e('payment', '💳')} <b>Choose a payment network</b>\n\n` +
-    `<b>${escapeHtml(p.name)}</b>\nAmount: <b>$${p.price}</b>\n\n` +
-    `Pick the crypto network you'd like to pay with. After paying, send your transaction hash or screenshot here for verification.`,
+  return { text: `${await e('payment', '💳')} <b>${t(lang, 'choose_network')}</b>\n\n` +
+    `<b>${escapeHtml(p.name)}</b>\n${t(lang, 'amount')}: <b>$${p.price}</b>\n\n` +
+    `${t(lang, 'pay_intro')}`,
     reply_markup: { inline_keyboard: rows } };
 }
 
-async function renderPayment(productId: string, network: Network, botUserId: string, cbId?: string): Promise<RenderedView> {
+async function renderPayment(productId: string, network: Network, botUserId: string, lang: Lang = 'en', cbId?: string): Promise<RenderedView> {
   const supabase = db();
   const activePayment = await getFlowAction<{
     type?: string;
@@ -335,7 +337,7 @@ async function renderPayment(productId: string, network: Network, botUserId: str
       row = {
         payment_id: payment.id,
         order_id: payment.order_id,
-        product_name: (order as any)?.products?.name ?? 'Product',
+        product_name: (order as any)?.products?.name ?? t(lang, 'product'),
         amount: payment.amount,
       };
     }
@@ -345,21 +347,21 @@ async function renderPayment(productId: string, network: Network, botUserId: str
     const { data: selectedWallet } = await supabase.from('wallets')
       .select('id, address, qr_url, label').eq('network', network).eq('is_active', true).limit(1).maybeSingle();
     wallet = selectedWallet;
-    if (!wallet) return { text: `${await e('status_error', '⚠️')} No wallet configured for this network.`, reply_markup: await backMenu() };
+    if (!wallet) return { text: `${await e('status_error', '⚠️')} ${t(lang, 'no_wallet_net')}`, reply_markup: await backMenu(lang) };
 
     const { data, error } = await supabase.rpc('create_pending_order', {
       _product_id: productId, _bot_user_id: botUserId, _network: network, _wallet_id: wallet.id,
     });
     row = Array.isArray(data) ? data[0] : data;
     if (error || !row || row.error) {
-        const msg = row?.error === 'out_of_stock' ? 'Out of stock'
-        : row?.error === 'inactive' ? 'Product unavailable'
-        : row?.error === 'wallet_unavailable' ? 'Wallet not available'
-        : 'Could not start payment';
+      const msg = row?.error === 'out_of_stock' ? t(lang, 'out_of_stock_err')
+        : row?.error === 'inactive' ? t(lang, 'product_unavailable')
+        : row?.error === 'wallet_unavailable' ? t(lang, 'wallet_unavailable')
+        : t(lang, 'start_pay_err');
       if (cbId) await answerCallback(cbId, msg, true);
-      return { text: `${await e('status_error', '⚠️')} ${escapeHtml(msg)}`, reply_markup: await backMenu() };
+      return { text: `${await e('status_error', '⚠️')} ${escapeHtml(msg)}`, reply_markup: await backMenu(lang) };
     }
-    if (cbId) await answerCallback(cbId, 'Order created');
+    if (cbId) await answerCallback(cbId, t(lang, 'order_created'));
     await setFlowAction(botUserId, {
       type: 'payment_proof',
       payment_id: row.payment_id,
@@ -368,30 +370,29 @@ async function renderPayment(productId: string, network: Network, botUserId: str
       network,
     });
   }
-  if (!wallet) return { text: `${await e('status_error', '⚠️')} Wallet details are unavailable.`, reply_markup: await backMenu() };
+  if (!wallet) return { text: `${await e('status_error', '⚠️')} ${t(lang, 'no_wallet_net')}`, reply_markup: await backMenu(lang) };
 
   const pending = await e('status_pending', '⏳');
   const qrLine = wallet.qr_url ? `\nQR: ${escapeHtml(wallet.qr_url)}\n` : '\n';
   const text =
-    `${pending}  <b>Payment Instructions</b>\n\n` +
-    `Product: <b>${escapeHtml(row.product_name)}</b>\n` +
-    `Order: <code>${String(row.order_id).slice(0, 8)}</code>\n` +
-    `Network: <b>${NETWORK_LABEL[network]}</b>\n` +
-    `Amount: <b>$${row.amount}</b>\n\n` +
-    `Send the <b>exact amount</b> to:\n<code>${escapeHtml(wallet.address)}</code>${qrLine}\n` +
-    `Then reply here with your <b>transaction hash</b> or <b>screenshot</b> of the payment. ` +
-    `Tap "I have paid" once submitted.`;
+    `${pending}  <b>${t(lang, 'pay_instructions')}</b>\n\n` +
+    `${t(lang, 'product')}: <b>${escapeHtml(row.product_name)}</b>\n` +
+    `${t(lang, 'order')}: <code>${String(row.order_id).slice(0, 8)}</code>\n` +
+    `${t(lang, 'network')}: <b>${NETWORK_LABEL[network]}</b>\n` +
+    `${t(lang, 'amount')}: <b>$${row.amount}</b>\n\n` +
+    `${t(lang, 'send_exact')}\n<code>${escapeHtml(wallet.address)}</code>${qrLine}\n` +
+    `${t(lang, 'then_reply')}`;
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      [await mkBtn('action_paid', '✅', 'I have paid', { callback_data: `paid:${row.payment_id}` })],
-      await navRow(),
+      [await mkBtn('action_paid', '✅', t(lang, 'i_have_paid'), { callback_data: `paid:${row.payment_id}` })],
+      await navRow(lang),
     ],
   };
   return { text, reply_markup: kb };
 }
 
 /* ─── orders / profile / referrals / support / search ────────── */
-async function renderOrders(botUserId: string): Promise<RenderedView> {
+async function renderOrders(botUserId: string, lang: Lang = 'en'): Promise<RenderedView> {
   const { data } = await db().from('orders')
     .select('id, amount, status, created_at, products(name, fallback_emoji, premium_emoji_id), payments(network, status)')
     .eq('bot_user_id', botUserId).order('created_at', { ascending: false }).limit(10);
@@ -401,28 +402,28 @@ async function renderOrders(botUserId: string): Promise<RenderedView> {
         const d = new Date(o.created_at).toLocaleDateString();
         const pay = o.payments?.[0];
         const payLine = pay ? ` · ${pay.network} ${pay.status}` : '';
-        return `${await productEmoji(o.products ?? {})} <b>${escapeHtml(o.products?.name || 'Product')}</b> — $${o.amount} · ${o.status}${payLine} · ${d}`;
+        return `${await productEmoji(o.products ?? {})} <b>${escapeHtml(o.products?.name || t(lang, 'product'))}</b> — $${o.amount} · ${o.status}${payLine} · ${d}`;
       }))).join('\n')
-    : 'You have no orders yet.';
-  return { text: `${await e('menu_orders', '🧾')} <b>Your orders</b>\n\n${lines}`, reply_markup: await backMenu() };
+    : t(lang, 'no_orders');
+  return { text: `${await e('menu_orders', '🧾')} <b>${t(lang, 'your_orders')}</b>\n\n${lines}`, reply_markup: await backMenu(lang) };
 }
 
-async function renderProfile(botUserId: string): Promise<RenderedView> {
+async function renderProfile(botUserId: string, lang: Lang = 'en'): Promise<RenderedView> {
   const { data: u } = await db().from('bot_users')
     .select('first_name, username, joined_at, total_spent, is_subscribed, referral_code').eq('id', botUserId).maybeSingle();
-  if (!u) return { text: `${await e('status_error', '⚠️')} Profile not found.`, reply_markup: await backMenu() };
+  if (!u) return { text: `${await e('status_error', '⚠️')} ${t(lang, 'profile_not_found')}`, reply_markup: await backMenu(lang) };
   const [sub, free] = await Promise.all([e('subscription', '⭐'), e('status_free', '⚪')]);
-  return { text: `${await e('menu_profile', '👤')} <b>Your Profile</b>\n\n` +
-    `Name: ${escapeHtml(u.first_name || '—')}\n` +
-    `Username: @${escapeHtml(u.username || '—')}\n` +
-    `Joined: ${new Date(u.joined_at).toLocaleDateString()}\n` +
-    `Total spent: $${u.total_spent}\n` +
-    `Status: ${u.is_subscribed ? `${sub} Active` : `${free} Free`}\n` +
-    `Referral code: <code>${u.referral_code}</code>`,
-    reply_markup: await backMenu() };
+  return { text: `${await e('menu_profile', '👤')} <b>${t(lang, 'your_profile')}</b>\n\n` +
+    `${t(lang, 'name')}: ${escapeHtml(u.first_name || '—')}\n` +
+    `${t(lang, 'username')}: @${escapeHtml(u.username || '—')}\n` +
+    `${t(lang, 'joined')}: ${new Date(u.joined_at).toLocaleDateString()}\n` +
+    `${t(lang, 'total_spent')}: $${u.total_spent}\n` +
+    `${t(lang, 'status')}: ${u.is_subscribed ? `${sub} ${t(lang, 'active')}` : `${free} ${t(lang, 'free')}`}\n` +
+    `${t(lang, 'referral_code')}: <code>${u.referral_code}</code>`,
+    reply_markup: await backMenu(lang) };
 }
 
-async function renderReferrals(botUserId: string): Promise<RenderedView> {
+async function renderReferrals(botUserId: string, lang: Lang = 'en'): Promise<RenderedView> {
   const supabase = db();
   const [{ data: u }, { count }, settings] = await Promise.all([
     supabase.from('bot_users').select('referral_code').eq('id', botUserId).maybeSingle(),
@@ -432,27 +433,27 @@ async function renderReferrals(botUserId: string): Promise<RenderedView> {
   const username = settings.bot_username;
   const link = username
     ? `https://t.me/${username.replace(/^@/, '')}?start=${u?.referral_code}`
-    : `Share your code: ${u?.referral_code}`;
-  return { text: `${await e('menu_referrals', '🎁')} <b>Referrals</b>\n\nInvite friends and earn rewards on every paid order.\n\n` +
-    `Your code: <code>${u?.referral_code}</code>\nInvited: <b>${count ?? 0}</b>\n\n` +
-    (username ? `Share link:\n${link}` : `<i>${link}</i>`),
-    reply_markup: await backMenu() };
+    : `${t(lang, 'share_code')}: ${u?.referral_code}`;
+  return { text: `${await e('menu_referrals', '🎁')} <b>${t(lang, 'referrals')}</b>\n\n${t(lang, 'ref_intro')}\n\n` +
+    `${t(lang, 'your_code')}: <code>${u?.referral_code}</code>\n${t(lang, 'invited')}: <b>${count ?? 0}</b>\n\n` +
+    (username ? `${t(lang, 'share_link')}:\n${link}` : `<i>${link}</i>`),
+    reply_markup: await backMenu(lang) };
 }
 
-async function renderSupport(botUserId: string): Promise<RenderedView> {
+async function renderSupport(botUserId: string, lang: Lang = 'en'): Promise<RenderedView> {
   await setFlowAction(botUserId, { type: 'support_message' });
   const s = await getSettings();
-  return { text: `${await e('menu_support', '💬')} <b>Support</b>\n\nSend your message in the next reply and our team will respond. You can also reach us at ${escapeHtml(s.support_handle || '@support')}.`,
-    reply_markup: await backMenu() };
+  return { text: `${await e('menu_support', '💬')} <b>${t(lang, 'support')}</b>\n\n${t(lang, 'support_intro')} ${escapeHtml(s.support_handle || '@support')}.`,
+    reply_markup: await backMenu(lang) };
 }
 
-async function renderSearchPrompt(botUserId: string): Promise<RenderedView> {
+async function renderSearchPrompt(botUserId: string, lang: Lang = 'en'): Promise<RenderedView> {
   await setFlowAction(botUserId, { type: 'search' });
-  return { text: `${await e('menu_search', '🔎')} <b>Search</b>\n\nSend a keyword (e.g. <i>netflix</i>, <i>chatgpt</i>).`,
-    reply_markup: await backMenu() };
+  return { text: `${await e('menu_search', '🔎')} <b>${t(lang, 'search')}</b>\n\n${t(lang, 'search_prompt')}`,
+    reply_markup: await backMenu(lang) };
 }
 
-async function renderSearchResults(query: string): Promise<RenderedView> {
+async function renderSearchResults(query: string, lang: Lang = 'en'): Promise<RenderedView> {
   const q = `%${query.replace(/[%_]/g, '')}%`;
   const { data } = await db().from('products')
     .select('id, name, price, fallback_emoji, premium_emoji_id, stock')
@@ -466,11 +467,11 @@ async function renderSearchResults(query: string): Promise<RenderedView> {
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...productRows,
-      await navRow(),
+      await navRow(lang),
     ],
   };
-  return { text: items.length ? `${await e('menu_search', '🔎')} Results for "<b>${escapeHtml(query)}</b>":\n\n${resultLines.join('\n')}\n\nChoose a product below:`
-      : `${await e('status_error', '⚠️')} No matches for "<b>${escapeHtml(query)}</b>".`,
+  return { text: items.length ? `${await e('menu_search', '🔎')} ${t(lang, 'results_for')} "<b>${escapeHtml(query)}</b>":\n\n${resultLines.join('\n')}\n\n${t(lang, 'choose_product')}`
+      : `${await e('status_error', '⚠️')} ${t(lang, 'no_matches')} "<b>${escapeHtml(query)}</b>".`,
     reply_markup: kb };
 }
 
@@ -482,29 +483,29 @@ async function renderView(state: NavState, botUserId: string, name?: string): Pr
 
   switch (state.screen) {
     case 'home': return renderHome(name, lang);
-    case 'categories': return renderCategories();
-    case 'category': return renderCategoryProducts(state.params?.categoryId ?? '');
-    case 'product': return renderProduct(state.params?.productId ?? '');
-    case 'buy': return renderBuyNetworks(state.params?.productId ?? '');
-    case 'payment': return renderPayment(state.params?.productId ?? '', state.params?.network as Network, botUserId);
+    case 'categories': return renderCategories(lang);
+    case 'category': return renderCategoryProducts(state.params?.categoryId ?? '', lang);
+    case 'product': return renderProduct(state.params?.productId ?? '', lang);
+    case 'buy': return renderBuyNetworks(state.params?.productId ?? '', lang);
+    case 'payment': return renderPayment(state.params?.productId ?? '', state.params?.network as Network, botUserId, lang);
     case 'proof': return {
-      text: `${await e('status_pending', '⏳')} <b>Payment proof</b>\n\nPlease reply with your <b>transaction hash</b> or send a <b>screenshot</b> of the payment.`,
+      text: `${await e('status_pending', '⏳')} <b>${t(lang, 'payment_proof')}</b>\n\n${t(lang, 'proof_prompt')}`,
       reply_markup: await backMenu(lang),
     };
     case 'payment_review': return {
-      text: `${await e('status_pending', '⏳')} <b>Payment under review</b>\n\nWe received your proof. An admin will verify shortly and update your order.`,
+      text: `${await e('status_pending', '⏳')} <b>${t(lang, 'payment_review')}</b>\n\n${t(lang, 'payment_review_body')}`,
       reply_markup: await backMenu(lang),
     };
-    case 'orders': return renderOrders(botUserId);
-    case 'profile': return renderProfile(botUserId);
-    case 'referrals': return renderReferrals(botUserId);
-    case 'support': return renderSupport(botUserId);
+    case 'orders': return renderOrders(botUserId, lang);
+    case 'profile': return renderProfile(botUserId, lang);
+    case 'referrals': return renderReferrals(botUserId, lang);
+    case 'support': return renderSupport(botUserId, lang);
     case 'support_received': return {
-      text: `${await e('status_success', '✅')} <b>Message received</b>\n\nOur team will reply here soon.`,
+      text: `${await e('status_success', '✅')} <b>${t(lang, 'support_received')}</b>\n\n${t(lang, 'support_received_body')}`,
       reply_markup: await backMenu(lang),
     };
-    case 'search': return renderSearchPrompt(botUserId);
-    case 'search_results': return renderSearchResults(state.params?.query ?? '');
+    case 'search': return renderSearchPrompt(botUserId, lang);
+    case 'search_results': return renderSearchResults(state.params?.query ?? '', lang);
     case 'language': return renderLanguage(lang);
     case 'wallet': return renderWallet(botUserId, lang);
     case 'deposit_proof': return {
@@ -560,9 +561,10 @@ async function captureSupportMessage(chatId: number, botUserId: string, body: st
   }
   await supabase.from('support_messages').insert({ ticket_id: ticketId, from_admin: false, body });
   await setFlowAction(botUserId, null);
+  const lang = await getUserLang(botUserId);
   const edited = await navigateTo({ botUserId, chatId, state: { screen: 'support_received' }, replace: true });
   if (!edited) {
-    await sendMessage(chatId, `${await e('status_success', '✅')} Got it — our team will reply here.`, { reply_markup: await backMenu() });
+    await sendMessage(chatId, `${await e('status_success', '✅')} ${t(lang, 'support_received_body')}`, { reply_markup: await backMenu(lang) });
   }
 }
 
@@ -593,11 +595,12 @@ async function capturePaymentProof(
     _screenshot_url: screenshotUrl,
   });
   await setFlowAction(botUserId, null);
+  const lang = await getUserLang(botUserId);
   const edited = await navigateTo({ botUserId, chatId, state: { screen: 'payment_review' }, replace: true });
   if (!edited) {
     await sendMessage(chatId,
-      `${await e('status_pending', '⏳')} <b>Payment under review</b>\n\nWe received your proof. An admin will verify shortly and update your order.`,
-      { reply_markup: await backMenu() });
+      `${await e('status_pending', '⏳')} <b>${t(lang, 'payment_review')}</b>\n\n${t(lang, 'payment_review_body')}`,
+      { reply_markup: await backMenu(lang) });
   }
 }
 
@@ -731,7 +734,8 @@ export async function handleCallback(cb: any) {
     return;
   }
   if (data.startsWith('paid:')) {
-    await answerCallback(cb.id, 'Send your tx hash or screenshot now.');
+    const lang = await getUserLang(botUserId);
+    await answerCallback(cb.id, t(lang, 'send_proof_now'));
     const currentPayment = await getFlowAction<Record<string, unknown>>(botUserId);
     await setFlowAction(botUserId, { ...(currentPayment ?? {}), type: 'payment_proof', payment_id: data.slice(5) });
     await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'proof', params: { paymentId: data.slice(5) } }, replace: true });
@@ -744,22 +748,23 @@ export async function handleCallback(cb: any) {
 export async function notifyPaymentReviewed(paymentId: string, approved: boolean, note?: string) {
   const supabase = db();
   const { data } = await supabase.from('payments')
-    .select('amount, network, order_id, bot_users(telegram_id), orders(products(name))')
+    .select('amount, network, order_id, bot_users(id, telegram_id, language), orders(products(name))')
     .eq('id', paymentId).single();
   if (!data) return;
   const chatId = (data as any).bot_users?.telegram_id;
   if (!chatId) return;
-  const productName = (data as any).orders?.products?.name ?? 'order';
+  const lang = detect((data as any).bot_users?.language);
+  const productName = (data as any).orders?.products?.name ?? t(lang, 'order');
   if (approved) {
     await sendMessage(chatId,
-      `${await e('status_success', '🎉')} <b>Payment approved!</b>\n\n` +
+      `${await e('status_success', '🎉')} <b>${t(lang, 'payment_approved')}</b>\n\n` +
       `${escapeHtml(productName)} — $${(data as any).amount}\n\n` +
-      `Your subscription is now active. ${note ? `\n<i>${escapeHtml(note)}</i>` : ''}`);
+      `${t(lang, 'payment_active')}${note ? `\n<i>${escapeHtml(note)}</i>` : ''}`);
   } else {
     await sendMessage(chatId,
-      `${await e('status_rejected', '❌')} <b>Payment rejected</b>\n\n` +
+      `${await e('status_rejected', '❌')} <b>${t(lang, 'payment_rejected')}</b>\n\n` +
       `${escapeHtml(productName)} — $${(data as any).amount}\n` +
-      `${note ? `Reason: ${escapeHtml(note)}\n` : ''}\nContact support if you believe this is an error.`);
+      `${note ? `${t(lang, 'reason')}: ${escapeHtml(note)}\n` : ''}\n${t(lang, 'contact_support_err')}`);
   }
 }
 
