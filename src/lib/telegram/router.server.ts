@@ -748,22 +748,23 @@ export async function handleCallback(cb: any) {
 export async function notifyPaymentReviewed(paymentId: string, approved: boolean, note?: string) {
   const supabase = db();
   const { data } = await supabase.from('payments')
-    .select('amount, network, order_id, bot_users(telegram_id), orders(products(name))')
+    .select('amount, network, order_id, bot_users(id, telegram_id, language), orders(products(name))')
     .eq('id', paymentId).single();
   if (!data) return;
   const chatId = (data as any).bot_users?.telegram_id;
   if (!chatId) return;
-  const productName = (data as any).orders?.products?.name ?? 'order';
+  const lang = detect((data as any).bot_users?.language);
+  const productName = (data as any).orders?.products?.name ?? t(lang, 'order');
   if (approved) {
     await sendMessage(chatId,
-      `${await e('status_success', '🎉')} <b>Payment approved!</b>\n\n` +
+      `${await e('status_success', '🎉')} <b>${t(lang, 'payment_approved')}</b>\n\n` +
       `${escapeHtml(productName)} — $${(data as any).amount}\n\n` +
-      `Your subscription is now active. ${note ? `\n<i>${escapeHtml(note)}</i>` : ''}`);
+      `${t(lang, 'payment_active')}${note ? `\n<i>${escapeHtml(note)}</i>` : ''}`);
   } else {
     await sendMessage(chatId,
-      `${await e('status_rejected', '❌')} <b>Payment rejected</b>\n\n` +
+      `${await e('status_rejected', '❌')} <b>${t(lang, 'payment_rejected')}</b>\n\n` +
       `${escapeHtml(productName)} — $${(data as any).amount}\n` +
-      `${note ? `Reason: ${escapeHtml(note)}\n` : ''}\nContact support if you believe this is an error.`);
+      `${note ? `${t(lang, 'reason')}: ${escapeHtml(note)}\n` : ''}\n${t(lang, 'contact_support_err')}`);
   }
 }
 
