@@ -53,6 +53,22 @@ export async function premiumEmoji(premiumId?: string | null, fallback = '✨'):
   return renderEmoji(premiumId || defaultPremiumId, fallback);
 }
 
+/** Build a dynamic inline button (product/category) with a premium icon fallback. */
+export async function mkEmojiBtn(
+  fallback: string,
+  label: string,
+  action: Record<string, any>,
+  premiumId?: string | null,
+): Promise<any> {
+  const { defaultPremiumId } = await load();
+  const safePremiumId = String(premiumId ?? defaultPremiumId ?? '').replace(/[^0-9]/g, '');
+  return {
+    text: `${fallback}  ${label}`,
+    ...(safePremiumId ? { icon_custom_emoji_id: safePremiumId } : {}),
+    ...action,
+  };
+}
+
 /**
  * Build an inline-keyboard button with Telegram Premium custom emoji support.
  * Newer Telegram Bot API versions support `icon_custom_emoji_id` on buttons.
