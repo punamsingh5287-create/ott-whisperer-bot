@@ -5,7 +5,8 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Megaphone,
-  LifeBuoy, Settings, LogOut, Bot, Wallet, CreditCard, Smile, Palette, MousePointerClick,
+  LifeBuoy, Settings, LogOut, Bot, Wallet, CreditCard, Smile, Palette, MousePointerClick, ArrowDownToLine,
+
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
