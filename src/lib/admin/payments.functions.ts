@@ -106,7 +106,9 @@ const emojiInput = z.object({
   premium_emoji_id: z.string().max(40).nullable().optional(),
   fallback_emoji: z.string().min(1).max(8),
   scope: z.enum(['button', 'product', 'category', 'system']).default('button'),
+  label: z.string().max(120).nullable().optional(),
 });
+
 
 export const listEmojis = createServerFn({ method: 'GET' })
   .middleware([requireSupabaseAuth])
@@ -124,10 +126,16 @@ export const upsertEmoji = createServerFn({ method: 'POST' })
     const { error } = await context.supabase.from('emoji_presets').upsert({
       ...data,
       premium_emoji_id: data.premium_emoji_id || null,
+      label: data.label ?? null,
     }, { onConflict: 'key' });
     if (error) throw error;
+    try {
+      const { clearEmojiCache } = await import('@/lib/telegram/emoji');
+      clearEmojiCache();
+    } catch {}
     return { ok: true };
   });
+
 
 export const deleteEmoji = createServerFn({ method: 'POST' })
   .middleware([requireSupabaseAuth])

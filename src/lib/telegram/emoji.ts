@@ -14,15 +14,19 @@ export function escapeHtml(s: string): string {
 }
 
 /* ── Emoji preset cache (60s) ──────────────────────────────────── */
-type Preset = { premium_emoji_id: string | null; fallback_emoji: string };
+type Preset = { premium_emoji_id: string | null; fallback_emoji: string; label: string | null };
 let cache: { at: number; map: Record<string, Preset>; defaultPremiumId: string | null } | null = null;
 
 async function load(): Promise<{ map: Record<string, Preset>; defaultPremiumId: string | null }> {
   if (cache && Date.now() - cache.at < 60_000) return { map: cache.map, defaultPremiumId: cache.defaultPremiumId };
-  const { data } = await db().from('emoji_presets').select('key, premium_emoji_id, fallback_emoji');
+  const { data } = await db().from('emoji_presets').select('key, premium_emoji_id, fallback_emoji, label');
   const map: Record<string, Preset> = {};
   for (const r of (data ?? []) as any[]) {
-    map[r.key] = { premium_emoji_id: r.premium_emoji_id, fallback_emoji: r.fallback_emoji ?? '✨' };
+    map[r.key] = {
+      premium_emoji_id: r.premium_emoji_id,
+      fallback_emoji: r.fallback_emoji ?? '✨',
+      label: r.label ?? null,
+    };
   }
   const defaultPremiumId = String(
     map.welcome?.premium_emoji_id
@@ -32,6 +36,10 @@ async function load(): Promise<{ map: Record<string, Preset>; defaultPremiumId: 
   cache = { at: Date.now(), map, defaultPremiumId };
   return { map, defaultPremiumId };
 }
+
+/** Clear the in-memory cache so changes from admin panel take effect immediately. */
+export function clearEmojiCache() { cache = null; }
+
 
 /** Render emoji HTML for a named preset key (e.g. "menu_home"). */
 export async function e(key: string, fallback = '✨'): Promise<string> {
@@ -86,13 +94,15 @@ export async function mkBtn(
   const { map: m, defaultPremiumId } = await load();
   const preset = m[key];
   const fb = preset?.fallback_emoji ?? fallback;
+  const lbl = preset?.label?.trim() ? preset.label : label;
   const premiumId = String(preset?.premium_emoji_id ?? defaultPremiumId ?? '').replace(/[^0-9]/g, '');
-  const fallbackText = `${fb}  ${label}`;
+  const fallbackText = `${fb}  ${lbl}`;
   return {
-    text: premiumId ? label : fallbackText,
+    text: premiumId ? lbl : fallbackText,
     ...(premiumId ? { _fallback_text: fallbackText } : {}),
     ...(premiumId ? { icon_custom_emoji_id: premiumId } : {}),
     ...action,
   };
 }
+
 

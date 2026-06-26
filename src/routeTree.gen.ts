@@ -23,6 +23,7 @@ import { Route as AuthenticatedAdminPaymentsRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin.orders'
 import { Route as AuthenticatedAdminEmojisRouteImport } from './routes/_authenticated/admin.emojis'
 import { Route as AuthenticatedAdminCategoriesRouteImport } from './routes/_authenticated/admin.categories'
+import { Route as AuthenticatedAdminButtonsRouteImport } from './routes/_authenticated/admin.buttons'
 import { Route as AuthenticatedAdminBroadcastsRouteImport } from './routes/_authenticated/admin.broadcasts'
 import { Route as AuthenticatedAdminBrandingRouteImport } from './routes/_authenticated/admin.branding'
 import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/public/telegram/webhook'
@@ -104,6 +105,12 @@ const AuthenticatedAdminCategoriesRoute =
     path: '/categories',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminButtonsRoute =
+  AuthenticatedAdminButtonsRouteImport.update({
+    id: '/buttons',
+    path: '/buttons',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminBroadcastsRoute =
   AuthenticatedAdminBroadcastsRouteImport.update({
     id: '/broadcasts',
@@ -129,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/admin/branding': typeof AuthenticatedAdminBrandingRoute
   '/admin/broadcasts': typeof AuthenticatedAdminBroadcastsRoute
+  '/admin/buttons': typeof AuthenticatedAdminButtonsRoute
   '/admin/categories': typeof AuthenticatedAdminCategoriesRoute
   '/admin/emojis': typeof AuthenticatedAdminEmojisRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -146,6 +154,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/admin/branding': typeof AuthenticatedAdminBrandingRoute
   '/admin/broadcasts': typeof AuthenticatedAdminBroadcastsRoute
+  '/admin/buttons': typeof AuthenticatedAdminButtonsRoute
   '/admin/categories': typeof AuthenticatedAdminCategoriesRoute
   '/admin/emojis': typeof AuthenticatedAdminEmojisRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -166,6 +175,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/admin/branding': typeof AuthenticatedAdminBrandingRoute
   '/_authenticated/admin/broadcasts': typeof AuthenticatedAdminBroadcastsRoute
+  '/_authenticated/admin/buttons': typeof AuthenticatedAdminButtonsRoute
   '/_authenticated/admin/categories': typeof AuthenticatedAdminCategoriesRoute
   '/_authenticated/admin/emojis': typeof AuthenticatedAdminEmojisRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/admin/branding'
     | '/admin/broadcasts'
+    | '/admin/buttons'
     | '/admin/categories'
     | '/admin/emojis'
     | '/admin/orders'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin/branding'
     | '/admin/broadcasts'
+    | '/admin/buttons'
     | '/admin/categories'
     | '/admin/emojis'
     | '/admin/orders'
@@ -222,6 +234,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/admin/branding'
     | '/_authenticated/admin/broadcasts'
+    | '/_authenticated/admin/buttons'
     | '/_authenticated/admin/categories'
     | '/_authenticated/admin/emojis'
     | '/_authenticated/admin/orders'
@@ -342,6 +355,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCategoriesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/buttons': {
+      id: '/_authenticated/admin/buttons'
+      path: '/buttons'
+      fullPath: '/admin/buttons'
+      preLoaderRoute: typeof AuthenticatedAdminButtonsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/broadcasts': {
       id: '/_authenticated/admin/broadcasts'
       path: '/broadcasts'
@@ -369,6 +389,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminBrandingRoute: typeof AuthenticatedAdminBrandingRoute
   AuthenticatedAdminBroadcastsRoute: typeof AuthenticatedAdminBroadcastsRoute
+  AuthenticatedAdminButtonsRoute: typeof AuthenticatedAdminButtonsRoute
   AuthenticatedAdminCategoriesRoute: typeof AuthenticatedAdminCategoriesRoute
   AuthenticatedAdminEmojisRoute: typeof AuthenticatedAdminEmojisRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
@@ -384,6 +405,7 @@ interface AuthenticatedAdminRouteChildren {
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminBrandingRoute: AuthenticatedAdminBrandingRoute,
   AuthenticatedAdminBroadcastsRoute: AuthenticatedAdminBroadcastsRoute,
+  AuthenticatedAdminButtonsRoute: AuthenticatedAdminButtonsRoute,
   AuthenticatedAdminCategoriesRoute: AuthenticatedAdminCategoriesRoute,
   AuthenticatedAdminEmojisRoute: AuthenticatedAdminEmojisRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
@@ -419,13 +441,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

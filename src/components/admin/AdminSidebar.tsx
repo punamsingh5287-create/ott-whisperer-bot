@@ -5,7 +5,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Megaphone,
-  LifeBuoy, Settings, LogOut, Bot, Wallet, CreditCard, Smile, Palette,
+  LifeBuoy, Settings, LogOut, Bot, Wallet, CreditCard, Smile, Palette, MousePointerClick,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
@@ -23,10 +23,12 @@ const items = [
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Broadcasts", url: "/admin/broadcasts", icon: Megaphone },
   { title: "Support", url: "/admin/support", icon: LifeBuoy },
+  { title: "Bot Buttons", url: "/admin/buttons", icon: MousePointerClick },
   { title: "Emojis", url: "/admin/emojis", icon: Smile },
   { title: "Branding", url: "/admin/branding", icon: Palette },
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
+
 
 export function AdminSidebar() {
   const { state } = useSidebar();
