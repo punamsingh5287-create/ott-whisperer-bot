@@ -1,0 +1,1 @@
+ALTER TABLE public.categories ADD COLUMN IF NOT EXISTS premium_emoji_id text; UPDATE public.categories SET premium_emoji_id = CASE slug WHEN 'ott' THEN '5465366461348322437' WHEN 'ai' THEN '5467715628070608538' WHEN 'gaming' THEN '5467458909285391544' WHEN 'utilities' THEN '5467893740364372976' END WHERE slug IN ('ott', 'ai', 'gaming', 'utilities');

@@ -119,6 +119,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          premium_emoji_id: string | null
           slug: string
           sort_order: number
           updated_at: string
@@ -129,6 +130,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          premium_emoji_id?: string | null
           slug: string
           sort_order?: number
           updated_at?: string
@@ -139,6 +141,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          premium_emoji_id?: string | null
           slug?: string
           sort_order?: number
           updated_at?: string
