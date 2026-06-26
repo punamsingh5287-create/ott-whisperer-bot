@@ -393,6 +393,7 @@ async function navigateTo(args: {
   reset?: boolean;
   replace?: boolean;
   allowNewMessage?: boolean;
+  forceNewMessage?: boolean;
 }) {
   return showView({
     botUserId: args.botUserId,
@@ -403,6 +404,7 @@ async function navigateTo(args: {
     reset: args.reset,
     replace: args.replace,
     allowNewMessage: args.allowNewMessage,
+    forceNewMessage: args.forceNewMessage,
     renderView: (state) => renderView(state, args.botUserId, args.name),
   });
 }
