@@ -392,7 +392,7 @@ async function renderPayment(productId: string, network: Network, botUserId: str
 }
 
 /* ─── orders / profile / referrals / support / search ────────── */
-async function renderOrders(botUserId: string): Promise<RenderedView> {
+async function renderOrders(botUserId: string, lang: Lang = 'en'): Promise<RenderedView> {
   const { data } = await db().from('orders')
     .select('id, amount, status, created_at, products(name, fallback_emoji, premium_emoji_id), payments(network, status)')
     .eq('bot_user_id', botUserId).order('created_at', { ascending: false }).limit(10);
@@ -402,28 +402,28 @@ async function renderOrders(botUserId: string): Promise<RenderedView> {
         const d = new Date(o.created_at).toLocaleDateString();
         const pay = o.payments?.[0];
         const payLine = pay ? ` · ${pay.network} ${pay.status}` : '';
-        return `${await productEmoji(o.products ?? {})} <b>${escapeHtml(o.products?.name || 'Product')}</b> — $${o.amount} · ${o.status}${payLine} · ${d}`;
+        return `${await productEmoji(o.products ?? {})} <b>${escapeHtml(o.products?.name || t(lang, 'product'))}</b> — $${o.amount} · ${o.status}${payLine} · ${d}`;
       }))).join('\n')
-    : 'You have no orders yet.';
-  return { text: `${await e('menu_orders', '🧾')} <b>Your orders</b>\n\n${lines}`, reply_markup: await backMenu() };
+    : t(lang, 'no_orders');
+  return { text: `${await e('menu_orders', '🧾')} <b>${t(lang, 'your_orders')}</b>\n\n${lines}`, reply_markup: await backMenu(lang) };
 }
 
-async function renderProfile(botUserId: string): Promise<RenderedView> {
+async function renderProfile(botUserId: string, lang: Lang = 'en'): Promise<RenderedView> {
   const { data: u } = await db().from('bot_users')
     .select('first_name, username, joined_at, total_spent, is_subscribed, referral_code').eq('id', botUserId).maybeSingle();
-  if (!u) return { text: `${await e('status_error', '⚠️')} Profile not found.`, reply_markup: await backMenu() };
+  if (!u) return { text: `${await e('status_error', '⚠️')} ${t(lang, 'profile_not_found')}`, reply_markup: await backMenu(lang) };
   const [sub, free] = await Promise.all([e('subscription', '⭐'), e('status_free', '⚪')]);
-  return { text: `${await e('menu_profile', '👤')} <b>Your Profile</b>\n\n` +
-    `Name: ${escapeHtml(u.first_name || '—')}\n` +
-    `Username: @${escapeHtml(u.username || '—')}\n` +
-    `Joined: ${new Date(u.joined_at).toLocaleDateString()}\n` +
-    `Total spent: $${u.total_spent}\n` +
-    `Status: ${u.is_subscribed ? `${sub} Active` : `${free} Free`}\n` +
-    `Referral code: <code>${u.referral_code}</code>`,
-    reply_markup: await backMenu() };
+  return { text: `${await e('menu_profile', '👤')} <b>${t(lang, 'your_profile')}</b>\n\n` +
+    `${t(lang, 'name')}: ${escapeHtml(u.first_name || '—')}\n` +
+    `${t(lang, 'username')}: @${escapeHtml(u.username || '—')}\n` +
+    `${t(lang, 'joined')}: ${new Date(u.joined_at).toLocaleDateString()}\n` +
+    `${t(lang, 'total_spent')}: $${u.total_spent}\n` +
+    `${t(lang, 'status')}: ${u.is_subscribed ? `${sub} ${t(lang, 'active')}` : `${free} ${t(lang, 'free')}`}\n` +
+    `${t(lang, 'referral_code')}: <code>${u.referral_code}</code>`,
+    reply_markup: await backMenu(lang) };
 }
 
-async function renderReferrals(botUserId: string): Promise<RenderedView> {
+async function renderReferrals(botUserId: string, lang: Lang = 'en'): Promise<RenderedView> {
   const supabase = db();
   const [{ data: u }, { count }, settings] = await Promise.all([
     supabase.from('bot_users').select('referral_code').eq('id', botUserId).maybeSingle(),
@@ -433,27 +433,27 @@ async function renderReferrals(botUserId: string): Promise<RenderedView> {
   const username = settings.bot_username;
   const link = username
     ? `https://t.me/${username.replace(/^@/, '')}?start=${u?.referral_code}`
-    : `Share your code: ${u?.referral_code}`;
-  return { text: `${await e('menu_referrals', '🎁')} <b>Referrals</b>\n\nInvite friends and earn rewards on every paid order.\n\n` +
-    `Your code: <code>${u?.referral_code}</code>\nInvited: <b>${count ?? 0}</b>\n\n` +
-    (username ? `Share link:\n${link}` : `<i>${link}</i>`),
-    reply_markup: await backMenu() };
+    : `${t(lang, 'share_code')}: ${u?.referral_code}`;
+  return { text: `${await e('menu_referrals', '🎁')} <b>${t(lang, 'referrals')}</b>\n\n${t(lang, 'ref_intro')}\n\n` +
+    `${t(lang, 'your_code')}: <code>${u?.referral_code}</code>\n${t(lang, 'invited')}: <b>${count ?? 0}</b>\n\n` +
+    (username ? `${t(lang, 'share_link')}:\n${link}` : `<i>${link}</i>`),
+    reply_markup: await backMenu(lang) };
 }
 
-async function renderSupport(botUserId: string): Promise<RenderedView> {
+async function renderSupport(botUserId: string, lang: Lang = 'en'): Promise<RenderedView> {
   await setFlowAction(botUserId, { type: 'support_message' });
   const s = await getSettings();
-  return { text: `${await e('menu_support', '💬')} <b>Support</b>\n\nSend your message in the next reply and our team will respond. You can also reach us at ${escapeHtml(s.support_handle || '@support')}.`,
-    reply_markup: await backMenu() };
+  return { text: `${await e('menu_support', '💬')} <b>${t(lang, 'support')}</b>\n\n${t(lang, 'support_intro')} ${escapeHtml(s.support_handle || '@support')}.`,
+    reply_markup: await backMenu(lang) };
 }
 
-async function renderSearchPrompt(botUserId: string): Promise<RenderedView> {
+async function renderSearchPrompt(botUserId: string, lang: Lang = 'en'): Promise<RenderedView> {
   await setFlowAction(botUserId, { type: 'search' });
-  return { text: `${await e('menu_search', '🔎')} <b>Search</b>\n\nSend a keyword (e.g. <i>netflix</i>, <i>chatgpt</i>).`,
-    reply_markup: await backMenu() };
+  return { text: `${await e('menu_search', '🔎')} <b>${t(lang, 'search')}</b>\n\n${t(lang, 'search_prompt')}`,
+    reply_markup: await backMenu(lang) };
 }
 
-async function renderSearchResults(query: string): Promise<RenderedView> {
+async function renderSearchResults(query: string, lang: Lang = 'en'): Promise<RenderedView> {
   const q = `%${query.replace(/[%_]/g, '')}%`;
   const { data } = await db().from('products')
     .select('id, name, price, fallback_emoji, premium_emoji_id, stock')
@@ -467,11 +467,11 @@ async function renderSearchResults(query: string): Promise<RenderedView> {
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...productRows,
-      await navRow(),
+      await navRow(lang),
     ],
   };
-  return { text: items.length ? `${await e('menu_search', '🔎')} Results for "<b>${escapeHtml(query)}</b>":\n\n${resultLines.join('\n')}\n\nChoose a product below:`
-      : `${await e('status_error', '⚠️')} No matches for "<b>${escapeHtml(query)}</b>".`,
+  return { text: items.length ? `${await e('menu_search', '🔎')} ${t(lang, 'results_for')} "<b>${escapeHtml(query)}</b>":\n\n${resultLines.join('\n')}\n\n${t(lang, 'choose_product')}`
+      : `${await e('status_error', '⚠️')} ${t(lang, 'no_matches')} "<b>${escapeHtml(query)}</b>".`,
     reply_markup: kb };
 }
 
