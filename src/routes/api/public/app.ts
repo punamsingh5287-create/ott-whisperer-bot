@@ -330,8 +330,8 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
   // Modal
   const modal=document.getElementById('modal');
   const mc=document.getElementById('modalContent');
-  function openModal(html){ mc.innerHTML=html; modal.classList.remove('hidden'); haptic('light'); }
-  function closeModal(){ modal.classList.add('hidden'); }
+  function openModal(html){ mc.innerHTML=html; modal.classList.remove('hidden'); running=false; haptic('light'); mc.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',closeModal)); }
+  function closeModal(){ modal.classList.add('hidden'); running=true; }
   modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
 
   const LANGS=[{code:'en',name:'English',flag:'🇬🇧'},{code:'ru',name:'Русский',flag:'🇷🇺'},{code:'zh',name:'中文',flag:'🇨🇳'},{code:'pl',name:'Polski',flag:'🇵🇱'},{code:'vi',name:'Tiếng Việt',flag:'🇻🇳'}];
@@ -347,7 +347,7 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 
   async function openWallet(tab){
     const data = await loadMe();
-    if(!data){ openModal('<h3>Wallet <span class="close-x" onclick="document.getElementById(\\'modal\\').classList.add(\\'hidden\\')">✕</span></h3><div class="empty">Open this app from inside Telegram to use your wallet.</div>'); return; }
+    if(!data){ openModal('<h3>Wallet <span class="close-x" data-close>✕</span></h3><div class="empty">Open this app from inside Telegram to use your wallet.</div>'); return; }
     tab = tab || 'wallet';
     const bal = Number(data.user.balance||0).toFixed(2);
     const spent = Number(data.user.total_spent||0).toFixed(2);
