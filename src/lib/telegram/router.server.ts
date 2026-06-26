@@ -118,14 +118,12 @@ async function renderHome(name?: string): Promise<RenderedView> {
 
 async function renderCategories(): Promise<RenderedView> {
   const { data } = await db().from('categories')
-    .select('id, name, slug, icon_emoji').eq('is_active', true).order('sort_order');
+    .select('id, name, slug, icon_emoji, premium_emoji_id').eq('is_active', true).order('sort_order');
   const cats = data ?? [];
   const categoryLines = await Promise.all(cats.map(async (c: any) => (
     `${await categoryEmoji(c)} <b>${escapeHtml(c.name)}</b>`
   )));
-  const categoryRows = await Promise.all(cats.map(async (c: any) => [
-    await mkEmojiBtn(c.icon_emoji || '📦', c.name, { callback_data: `cat:${c.id}` }),
-  ]));
+  const categoryRows = await Promise.all(cats.map(async (c: any) => [await categoryBtn(c)]));
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...categoryRows,
