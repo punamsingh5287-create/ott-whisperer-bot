@@ -768,6 +768,30 @@ export async function notifyPaymentReviewed(paymentId: string, approved: boolean
   }
 }
 
+export async function notifyTopupReviewed(topupId: string, approved: boolean, note?: string) {
+  const supabase = db();
+  const { data } = await supabase.from('wallet_topups')
+    .select('amount, bot_users(telegram_id, language, balance)')
+    .eq('id', topupId).single();
+  if (!data) return;
+  const chatId = (data as any).bot_users?.telegram_id;
+  if (!chatId) return;
+  const lang = detect((data as any).bot_users?.language);
+  const amount = Number((data as any).amount ?? 0);
+  const balance = Number((data as any).bot_users?.balance ?? 0);
+  if (approved) {
+    await sendMessage(chatId,
+      `${await e('status_success', '✅')} <b>${t(lang, 'deposit_approved') || 'Deposit approved'}</b>\n\n` +
+      `+$${amount.toFixed(2)}\n` +
+      `${t(lang, 'balance')}: <b>$${balance.toFixed(2)}</b>` +
+      `${note ? `\n\n<i>${escapeHtml(note)}</i>` : ''}`);
+  } else {
+    await sendMessage(chatId,
+      `${await e('status_rejected', '❌')} <b>${t(lang, 'deposit_rejected') || 'Deposit rejected'}</b>` +
+      `${note ? `\n${t(lang, 'reason') || 'Reason'}: ${escapeHtml(note)}` : ''}`);
+  }
+}
+
 export async function syncBotUsername() {
   try {
     const me = await getMe();
