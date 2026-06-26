@@ -290,7 +290,7 @@ async function renderProduct(productId: string): Promise<RenderedView> {
 }
 
 /* ─── crypto checkout ─────────────────────────────────────────── */
-async function renderBuyNetworks(productId: string): Promise<RenderedView> {
+export async function renderBuyNetworks(productId: string): Promise<RenderedView> {
   const { data: p } = await db().from('products').select('name, price, stock, status').eq('id', productId).maybeSingle();
   if (!p || p.status !== 'active' || p.stock <= 0) {
     return { text: `${await e('status_error', '⚠️')} This product is unavailable.`, reply_markup: await backMenu() };
