@@ -15,7 +15,7 @@ function headers(json = true) {
 async function tg(method: string, body: Record<string, unknown>) {
   try {
     const res = await fetch(`${GATEWAY_URL}/${method}`, {
-      method: 'POST', headers: headers(), body: JSON.stringify(body),
+      method: 'POST', headers: headers(), body: JSON.stringify(stripInternalButtonFields(body)),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data?.ok === false) console.error(`tg ${method} failed`, res.status, data);
@@ -41,6 +41,17 @@ function stripButtonCustomEmoji(value: unknown): unknown {
       continue;
     }
     out[key] = stripButtonCustomEmoji(child);
+  }
+  return out;
+}
+
+function stripInternalButtonFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripInternalButtonFields);
+  if (!value || typeof value !== 'object') return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (key === '_fallback_text') continue;
+    out[key] = stripInternalButtonFields(child);
   }
   return out;
 }
