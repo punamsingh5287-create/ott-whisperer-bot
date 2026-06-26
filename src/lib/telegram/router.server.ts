@@ -88,6 +88,8 @@ async function getSettings() {
 }
 
 /* ─── menus ───────────────────────────────────────────────────── */
+const MINI_APP_URL = process.env.MINI_APP_URL || 'https://project--0e9ed495-46e4-42a2-801a-3588d25b626e-dev.lovable.app/app';
+
 async function mainMenu(): Promise<InlineKeyboard> {
   const [cats, search, orders, profile, ref, support, close] = await Promise.all([
     mkBtn('menu_categories', '🗂', 'Categories', { callback_data: 'menu:cats' }),
@@ -98,7 +100,8 @@ async function mainMenu(): Promise<InlineKeyboard> {
     mkBtn('menu_support', '💬', 'Support', { callback_data: 'menu:support' }),
     mkBtn('menu_close', '✕', 'Close', { callback_data: 'nav:close' }),
   ]);
-  return { inline_keyboard: [[cats, search], [orders, profile], [ref, support], [close]] };
+  const openApp = { text: '🚀  Open Store App', web_app: { url: MINI_APP_URL } } as any;
+  return { inline_keyboard: [[openApp], [cats, search], [orders, profile], [ref, support], [close]] };
 }
 
 async function navRow(includeHome = true): Promise<InlineKeyboard['inline_keyboard'][number]> {

@@ -10,10 +10,12 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AppRouteImport } from './routes/app'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as ApiPublicStorefrontRouteImport } from './routes/api/public/storefront'
 import { Route as AuthenticatedAdminWalletsRouteImport } from './routes/_authenticated/admin.wallets'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminSupportRouteImport } from './routes/_authenticated/admin.support'
@@ -31,6 +33,11 @@ import { Route as ApiPublicTelegramWebhookRouteImport } from './routes/api/publi
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
@@ -51,6 +58,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const ApiPublicStorefrontRoute = ApiPublicStorefrontRouteImport.update({
+  id: '/api/public/storefront',
+  path: '/api/public/storefront',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminWalletsRoute =
   AuthenticatedAdminWalletsRouteImport.update({
@@ -132,6 +144,7 @@ const ApiPublicTelegramWebhookRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
   '/auth': typeof AuthRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/admin/branding': typeof AuthenticatedAdminBrandingRoute
@@ -146,11 +159,13 @@ export interface FileRoutesByFullPath {
   '/admin/support': typeof AuthenticatedAdminSupportRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/wallets': typeof AuthenticatedAdminWalletsRoute
+  '/api/public/storefront': typeof ApiPublicStorefrontRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
   '/auth': typeof AuthRoute
   '/admin/branding': typeof AuthenticatedAdminBrandingRoute
   '/admin/broadcasts': typeof AuthenticatedAdminBroadcastsRoute
@@ -164,6 +179,7 @@ export interface FileRoutesByTo {
   '/admin/support': typeof AuthenticatedAdminSupportRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/wallets': typeof AuthenticatedAdminWalletsRoute
+  '/api/public/storefront': typeof ApiPublicStorefrontRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
@@ -171,6 +187,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/app': typeof AppRoute
   '/auth': typeof AuthRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/admin/branding': typeof AuthenticatedAdminBrandingRoute
@@ -185,6 +202,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/support': typeof AuthenticatedAdminSupportRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/wallets': typeof AuthenticatedAdminWalletsRoute
+  '/api/public/storefront': typeof ApiPublicStorefrontRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
 }
@@ -192,6 +210,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/app'
     | '/auth'
     | '/admin'
     | '/admin/branding'
@@ -206,11 +225,13 @@ export interface FileRouteTypes {
     | '/admin/support'
     | '/admin/users'
     | '/admin/wallets'
+    | '/api/public/storefront'
     | '/admin/'
     | '/api/public/telegram/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/app'
     | '/auth'
     | '/admin/branding'
     | '/admin/broadcasts'
@@ -224,12 +245,14 @@ export interface FileRouteTypes {
     | '/admin/support'
     | '/admin/users'
     | '/admin/wallets'
+    | '/api/public/storefront'
     | '/admin'
     | '/api/public/telegram/webhook'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
+    | '/app'
     | '/auth'
     | '/_authenticated/admin'
     | '/_authenticated/admin/branding'
@@ -244,6 +267,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/support'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/wallets'
+    | '/api/public/storefront'
     | '/_authenticated/admin/'
     | '/api/public/telegram/webhook'
   fileRoutesById: FileRoutesById
@@ -251,7 +275,9 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AppRoute: typeof AppRoute
   AuthRoute: typeof AuthRoute
+  ApiPublicStorefrontRoute: typeof ApiPublicStorefrontRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
 
@@ -262,6 +288,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -291,6 +324,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/api/public/storefront': {
+      id: '/api/public/storefront'
+      path: '/api/public/storefront'
+      fullPath: '/api/public/storefront'
+      preLoaderRoute: typeof ApiPublicStorefrontRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/wallets': {
       id: '/_authenticated/admin/wallets'
@@ -435,7 +475,9 @@ const AuthenticatedRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AppRoute: AppRoute,
   AuthRoute: AuthRoute,
+  ApiPublicStorefrontRoute: ApiPublicStorefrontRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }
 export const routeTree = rootRouteImport
