@@ -79,7 +79,7 @@ export const reviewPayment = createServerFn({ method: 'POST' })
   }).parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const note = data.note ?? null;
+    const note = data.note ?? '';
     if (data.action === 'approve') {
       const { error } = await context.supabase.rpc('approve_payment', {
         _payment_id: data.id, _admin_id: context.userId, _note: note,
