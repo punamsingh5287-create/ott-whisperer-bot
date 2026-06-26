@@ -3,7 +3,7 @@ import {
   sendMessage, answerCallback, getMe, getFile, downloadFile,
   type InlineKeyboard,
 } from './gateway.server';
-import { renderEmoji, escapeHtml, e, mkBtn } from './emoji';
+import { renderEmoji, escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
 import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavState, type RenderedView } from './navigation.server';
 
 type TgUser = { id: number; username?: string; first_name?: string };
@@ -31,8 +31,8 @@ async function categoryEmoji(c: any): Promise<string> {
   return e(key ? `category_${key}` : 'category_default', c.icon_emoji || '📦');
 }
 
-function productEmoji(p: any): string {
-  return renderEmoji(p.premium_emoji_id, p.fallback_emoji || '✨');
+async function productEmoji(p: any): Promise<string> {
+  return premiumEmoji(p.premium_emoji_id, p.fallback_emoji || '✨');
 }
 
 /* ─── user upsert ─────────────────────────────────────────────── */
@@ -123,8 +123,7 @@ async function renderCategories(): Promise<RenderedView> {
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...cats.map((c: any) => {
-        const text = `${c.icon_emoji || '📦'}  ${c.name}`;
-        return [{ text, callback_data: `cat:${c.id}` }];
+        return [mkEmojiBtn(c.icon_emoji || '📦', c.name, { callback_data: `cat:${c.id}` })];
       }),
 
       await navRow(),
@@ -149,10 +148,9 @@ async function renderCategoryProducts(categoryId: string): Promise<RenderedView>
   ));
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...items.map((p: any) => {
+      ...items.map(async (p: any) => {
         const label = `${p.name} — $${p.price}${p.stock <= 0 ? ' (sold out)' : ''}`;
-        const text = `${p.fallback_emoji || '✨'}  ${label}`;
-        return [{ text, callback_data: `prod:${p.id}` }];
+        return [await mkEmojiBtn(p.fallback_emoji || '✨', label, { callback_data: `prod:${p.id}` }, p.premium_emoji_id)];
       }),
 
       await navRow(),
@@ -167,7 +165,7 @@ async function renderCategoryProducts(categoryId: string): Promise<RenderedView>
 async function renderProduct(productId: string): Promise<RenderedView> {
   const { data: p } = await db().from('products').select('*, categories(name, icon_emoji)').eq('id', productId).maybeSingle();
   if (!p) return { text: `${await e('status_error', '⚠️')} Product not found.`, reply_markup: await backMenu() };
-  const emoji = productEmoji(p);
+  const emoji = await productEmoji(p);
   const [inStock, outStock, priceIcon, durationIcon, tagIcon] = await Promise.all([
     e('status_approved', '✅'),
     e('status_rejected', '⛔'),
@@ -307,7 +305,7 @@ async function renderOrders(botUserId: string): Promise<RenderedView> {
         const d = new Date(o.created_at).toLocaleDateString();
         const pay = o.payments?.[0];
         const payLine = pay ? ` · ${pay.network} ${pay.status}` : '';
-        return `${productEmoji(o.products ?? {})} <b>${escapeHtml(o.products?.name || 'Product')}</b> — $${o.amount} · ${o.status}${payLine} · ${d}`;
+        return `${await productEmoji(o.products ?? {})} <b>${escapeHtml(o.products?.name || 'Product')}</b> — $${o.amount} · ${o.status}${payLine} · ${d}`;
       }).join('\n')
     : 'You have no orders yet.';
   return { text: `${await e('menu_orders', '🧾')} <b>Your orders</b>\n\n${lines}`, reply_markup: await backMenu() };
@@ -364,13 +362,12 @@ async function renderSearchResults(query: string): Promise<RenderedView> {
     .select('id, name, price, fallback_emoji, premium_emoji_id, stock')
     .or(`name.ilike.${q},description.ilike.${q}`).eq('status', 'active').limit(20);
   const items = data ?? [];
-  const resultLines = items.map((p: any) => `${productEmoji(p)} <b>${escapeHtml(p.name)}</b> — <b>$${p.price}</b>`);
+  const resultLines = await Promise.all(items.map(async (p: any) => `${await productEmoji(p)} <b>${escapeHtml(p.name)}</b> — <b>$${p.price}</b>`));
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...items.map((p: any) => {
+      ...items.map(async (p: any) => {
         const label = `${p.name} — $${p.price}`;
-        const text = `${p.fallback_emoji || '✨'}  ${label}`;
-        return [{ text, callback_data: `prod:${p.id}` }];
+        return [await mkEmojiBtn(p.fallback_emoji || '✨', label, { callback_data: `prod:${p.id}` }, p.premium_emoji_id)];
       }),
 
       await navRow(),
