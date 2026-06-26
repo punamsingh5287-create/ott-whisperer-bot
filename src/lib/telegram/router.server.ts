@@ -160,14 +160,14 @@ async function viewBuyNetworks(chatId: number, productId: string) {
   const rows: InlineKeyboard['inline_keyboard'] = [];
   for (const net of ['USDT_TRC20', 'USDT_BEP20', 'SOL'] as Network[]) {
     if (!have.has(net)) continue;
-    const emoji = await eb(NETWORK_KEY[net], '💠');
-    rows.push([{ text: `${emoji}  Pay with ${NETWORK_LABEL[net]}`, callback_data: `pay:${net}:${productId}` }]);
+    rows.push([await mkBtn(NETWORK_KEY[net], '💠', `Pay with ${NETWORK_LABEL[net]}`, { callback_data: `pay:${net}:${productId}` })]);
   }
   if (rows.length === 0) {
     await sendMessage(chatId, `${await e('status_error', '⚠️')} No payment networks configured. Contact support.`, { reply_markup: await backMenu() });
     return;
   }
-  rows.push([{ text: `${await eb('menu_back', '«')} Cancel`, callback_data: `prod:${productId}` }]);
+  rows.push([await mkBtn('menu_back', '«', 'Cancel', { callback_data: `prod:${productId}` })]);
+
   await sendMessage(chatId,
     `💳 <b>Choose a payment network</b>\n\n` +
     `<b>${escapeHtml(p.name)}</b>\nAmount: <b>$${p.price}</b>\n\n` +
