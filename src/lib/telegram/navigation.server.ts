@@ -104,6 +104,8 @@ export async function showView(args: ShowViewArgs): Promise<boolean> {
   const pending = await readPending(args.botUserId);
   const existing = pending.nav;
   const view = await args.renderView(args.state);
+  // Prefer the message the user just interacted with — it's always editable
+  // and ensures we stay on a single bubble even if a stale message_id is cached.
   const targetMessageId = args.messageId ?? existing?.message_id;
   const messageKind = isMediaMessage(args.callbackMessage) ? 'media' : (existing?.message_kind ?? 'text');
 
