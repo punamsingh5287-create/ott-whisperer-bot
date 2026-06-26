@@ -299,13 +299,19 @@ async function viewSearchPrompt(chatId: number, botUserId: string) {
 async function runSearch(chatId: number, query: string) {
   const q = `%${query.replace(/[%_]/g, '')}%`;
   const { data } = await db().from('products')
-    .select('id, name, price, fallback_emoji, stock')
+    .select('id, name, price, fallback_emoji, premium_emoji_id, stock')
     .or(`name.ilike.${q},description.ilike.${q}`).eq('status', 'active').limit(20);
   const items = data ?? [];
+  const back = await mkBtn('menu_back', '«', 'Menu', { callback_data: 'menu:home' });
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...items.map((p) => [{ text: `${p.fallback_emoji || '✨'}  ${p.name} — $${p.price}`, callback_data: `prod:${p.id}` }]),
-      [{ text: `${await eb('menu_back', '«')} Menu`, callback_data: 'menu:home' }],
+      ...items.map((p: any) => {
+        const icon = rowIcon(p);
+        const label = `${p.name} — $${p.price}`;
+        const text = icon.icon_custom_emoji_id ? label : `${p.fallback_emoji || '✨'}  ${label}`;
+        return [{ text, callback_data: `prod:${p.id}`, ...icon }];
+      }),
+      [back],
     ],
   };
   await sendMessage(chatId,
@@ -313,6 +319,7 @@ async function runSearch(chatId: number, query: string) {
       : `${await e('status_error', '⚠️')} No matches for "<b>${escapeHtml(query)}</b>".`,
     { reply_markup: kb });
 }
+
 
 async function captureSupportMessage(chatId: number, botUserId: string, body: string) {
   const supabase = db();
