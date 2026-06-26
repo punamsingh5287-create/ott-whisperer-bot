@@ -70,6 +70,18 @@ export async function editMessage(chatId: number, messageId: number, text: strin
   }, 'text');
 }
 
+export async function editMessageCaption(chatId: number, messageId: number, caption: string, reply_markup?: InlineKeyboard) {
+  return tgHtml('editMessageCaption', {
+    chat_id: chatId, message_id: messageId, caption, parse_mode: 'HTML', reply_markup,
+  }, 'caption');
+}
+
+export async function editMessageReplyMarkup(chatId: number, messageId: number, reply_markup?: InlineKeyboard) {
+  return tg('editMessageReplyMarkup', {
+    chat_id: chatId, message_id: messageId, reply_markup,
+  });
+}
+
 export async function sendPhoto(chatId: number, photoUrl: string, caption: string, reply_markup?: InlineKeyboard) {
   return tgHtml('sendPhoto', { chat_id: chatId, photo: photoUrl, caption, parse_mode: 'HTML', reply_markup }, 'caption');
 }
