@@ -95,7 +95,7 @@ function ProductsPage() {
       const { data, error: sErr } = await supabase.storage.from("product-images")
         .createSignedUrl(path, 60 * 60 * 24 * 365 * 5);
       if (sErr) throw sErr;
-      setForm((f) => ({ ...f, image_url: data.signedUrl }));
+      setForm((f: Product) => ({ ...f, image_url: data.signedUrl }));
       toast.success("Image uploaded");
     } catch (e: any) { toast.error(e?.message ?? "Upload failed"); }
     finally { setUploading(false); }
