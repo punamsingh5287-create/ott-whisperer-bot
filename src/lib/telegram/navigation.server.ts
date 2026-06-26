@@ -37,6 +37,7 @@ type ShowViewArgs = {
   reset?: boolean;
   replace?: boolean;
   allowNewMessage?: boolean;
+  forceNewMessage?: boolean;
 };
 
 function isObject(value: unknown): value is PendingState {
