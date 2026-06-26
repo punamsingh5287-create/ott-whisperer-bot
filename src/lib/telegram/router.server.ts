@@ -561,9 +561,10 @@ async function captureSupportMessage(chatId: number, botUserId: string, body: st
   }
   await supabase.from('support_messages').insert({ ticket_id: ticketId, from_admin: false, body });
   await setFlowAction(botUserId, null);
+  const lang = await getUserLang(botUserId);
   const edited = await navigateTo({ botUserId, chatId, state: { screen: 'support_received' }, replace: true });
   if (!edited) {
-    await sendMessage(chatId, `${await e('status_success', '✅')} Got it — our team will reply here.`, { reply_markup: await backMenu() });
+    await sendMessage(chatId, `${await e('status_success', '✅')} ${t(lang, 'support_received_body')}`, { reply_markup: await backMenu(lang) });
   }
 }
 
