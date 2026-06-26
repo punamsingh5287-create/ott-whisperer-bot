@@ -77,18 +77,6 @@ async function tgHtml(method: string, body: Record<string, unknown>, htmlKey: 't
   return tg(method, nextBody);
 }
 
-async function tgHtmlOld(method: string, body: Record<string, unknown>, htmlKey: 'text' | 'caption') {
-  const nextBody = {
-    ...body,
-    ...(typeof body[htmlKey] === 'string' && String(body[htmlKey]).includes('<tg-emoji')
-      ? { [htmlKey]: stripTelegramCustomEmoji(String(body[htmlKey])) }
-      : {}),
-    ...(bodyHasButtonCustomEmoji(body) ? { reply_markup: stripButtonCustomEmoji(body.reply_markup) } : {}),
-  };
-
-  return tg(method, nextBody);
-}
-
 export type InlineKeyboard = {
   inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string; icon_custom_emoji_id?: string }>>;
 };
