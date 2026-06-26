@@ -51,7 +51,7 @@ function EmojisPage() {
           <h1 className="text-2xl font-black sm:text-3xl">Premium Emoji Manager</h1>
           <p className="text-sm text-muted-foreground">Manage Telegram Premium custom emojis used across bot menus and messages.</p>
           <p className="mt-1 text-xs text-amber-400/80">
-            ⚠️ Premium emojis on <b>buttons</b> (Bot API 9.4 <code>icon_custom_emoji_id</code>) only render when the bot owner has an active Telegram Premium subscription. The fallback emoji is shown otherwise.
+            Premium icons are applied to bot buttons automatically when Telegram supports them; if Telegram rejects a button icon, the bot retries safely so navigation keeps working.
           </p>
         </div>
 
