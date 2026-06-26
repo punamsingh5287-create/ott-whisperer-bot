@@ -17,7 +17,7 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/emojis")({ component: EmojisPage });
 
-const empty = { key: "", name: "", premium_emoji_id: "", fallback_emoji: "✨", scope: "button" as const };
+const empty = { key: "", name: "", label: "", premium_emoji_id: "", fallback_emoji: "✨", scope: "button" as const };
 
 function EmojisPage() {
   const qc = useQueryClient();
@@ -34,11 +34,13 @@ function EmojisPage() {
         ...form,
         key: form.key.toLowerCase().replace(/[^a-z0-9_]/g, "_"),
         premium_emoji_id: form.premium_emoji_id || null,
+        label: form.label || null,
       } });
       toast.success("Saved"); setOpen(false);
       qc.invalidateQueries({ queryKey: ["admin-emojis"] });
     } catch (e: any) { toast.error(e?.message ?? "Save failed"); }
   };
+
 
   const grouped = (rows as any[]).reduce<Record<string, any[]>>((acc, r) => {
     (acc[r.scope] ||= []).push(r); return acc;
@@ -64,9 +66,13 @@ function EmojisPage() {
             <div className="grid gap-3">
               <div><Label>Key (slug)</Label>
                 <Input value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} placeholder="menu_home" /></div>
-              <div><Label>Name</Label>
+              <div><Label>Name (admin label)</Label>
                 <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Home button" /></div>
+              <div><Label>Button label (shown in Telegram)</Label>
+                <Input value={form.label ?? ""} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="Home" />
+                <p className="mt-1 text-xs text-muted-foreground">Only used for button-scope presets. Leave blank to keep the code default.</p></div>
               <div><Label>Premium emoji ID</Label>
+
                 <Input value={form.premium_emoji_id} onChange={(e) => setForm({ ...form, premium_emoji_id: e.target.value })} placeholder="5879770924629905517" />
                 <p className="mt-1 text-xs text-muted-foreground">Forward an animated emoji to @idstickerbot to find its ID.</p></div>
               <div><Label>Fallback emoji</Label>
@@ -110,9 +116,10 @@ function EmojisPage() {
                   </div>
                 </div>
                 <div className="flex shrink-0 gap-1">
-                  <Button size="icon" variant="ghost" onClick={() => { setForm({ ...r, premium_emoji_id: r.premium_emoji_id ?? "" }); setOpen(true); }}>
+                  <Button size="icon" variant="ghost" onClick={() => { setForm({ ...r, label: r.label ?? "", premium_emoji_id: r.premium_emoji_id ?? "" }); setOpen(true); }}>
                     <Pencil className="h-3 w-3" />
                   </Button>
+
                   <Button size="icon" variant="ghost" onClick={async () => {
                     if (!confirm("Delete emoji preset?")) return;
                     await delFn({ data: { id: r.id } });
