@@ -74,6 +74,7 @@ const categoryInput = z.object({
   name: z.string().min(1).max(80),
   slug: z.string().min(1).max(80).regex(/^[a-z0-9-]+$/),
   icon_emoji: z.string().max(8).optional().nullable(),
+  premium_emoji_id: z.string().max(40).optional().nullable(),
   sort_order: z.number().int().default(0),
   is_active: z.boolean().default(true),
 });
