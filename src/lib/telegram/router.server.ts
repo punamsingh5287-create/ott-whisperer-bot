@@ -139,7 +139,7 @@ async function renderCategories(): Promise<RenderedView> {
 async function renderCategoryProducts(categoryId: string): Promise<RenderedView> {
   const supabase = db();
   const [{ data: cat }, { data: prods }] = await Promise.all([
-    supabase.from('categories').select('name, slug, icon_emoji').eq('id', categoryId).maybeSingle(),
+    supabase.from('categories').select('name, slug, icon_emoji, premium_emoji_id').eq('id', categoryId).maybeSingle(),
     supabase.from('products').select('id, name, price, fallback_emoji, premium_emoji_id, stock')
       .eq('category_id', categoryId).eq('status', 'active').order('sort_order').limit(50),
   ]);
