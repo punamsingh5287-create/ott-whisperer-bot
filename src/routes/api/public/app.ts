@@ -60,7 +60,7 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 .wrap{max-width:520px;margin:0 auto;padding:18px 16px 24px}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .logo{display:flex;align-items:center;gap:10px}
-.logo-mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--c1),var(--c2));box-shadow:var(--glow);display:grid;place-items:center;font-weight:800;font-family:Sora;animation:float 4s ease-in-out infinite}
+.logo-mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--c1),var(--c2));box-shadow:var(--glow);display:grid;place-items:center;font-weight:800;font-family:Sora}
 .logo-name{font-family:Sora;font-weight:700;font-size:17px}
 .logo-sub{font-size:11px;color:var(--muted)}
 .bell{width:40px;height:40px;border-radius:14px;background:rgba(20,15,40,.7);border:1px solid var(--line);display:grid;place-items:center}
