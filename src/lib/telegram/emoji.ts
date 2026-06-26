@@ -63,7 +63,7 @@ export async function mkEmojiBtn(
   const { defaultPremiumId } = await load();
   const safePremiumId = String(premiumId ?? defaultPremiumId ?? '').replace(/[^0-9]/g, '');
   return {
-    text: `${fallback}  ${label}`,
+    text: safePremiumId ? label : `${fallback}  ${label}`,
     ...(safePremiumId ? { icon_custom_emoji_id: safePremiumId } : {}),
     ...action,
   };
@@ -86,7 +86,7 @@ export async function mkBtn(
   const fb = preset?.fallback_emoji ?? fallback;
   const premiumId = String(preset?.premium_emoji_id ?? defaultPremiumId ?? '').replace(/[^0-9]/g, '');
   return {
-    text: `${fb}  ${label}`,
+    text: premiumId ? label : `${fb}  ${label}`,
     ...(premiumId ? { icon_custom_emoji_id: premiumId } : {}),
     ...action,
   };
