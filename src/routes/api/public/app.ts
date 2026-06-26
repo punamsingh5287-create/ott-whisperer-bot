@@ -259,10 +259,17 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
         <h4>\${escape(p.name)}</h4>
         <div class="meta"><span class="price">$\${Number(p.price).toFixed(2)}</span><button class="buy" data-buy="\${p.id}">Buy</button></div>
       </div>\`).join('') : '<div class="empty" style="grid-column:1/-1">No products found</div>';
-    grid.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click',e=>{
+    grid.querySelectorAll('[data-buy]').forEach(b=>b.addEventListener('click', async (e)=>{
       e.stopPropagation(); haptic('medium');
       const id=b.dataset.buy;
-      if(tg){ tg.sendData(JSON.stringify({action:'buy',product_id:id})); tg.close(); }
+      if(!u){ alert('Open this from inside Telegram'); return; }
+      b.textContent='…';
+      try{
+        const r = await fetch('/api/public/buy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tg_id:u.id,product_id:id,first_name:u.first_name,username:u.username,language:u.language_code})});
+        const j = await r.json();
+        if(j.ok){ if(tg){ tg.close(); } else { alert('Check your Telegram chat to complete payment'); } }
+        else { alert(j.error||'Failed'); b.textContent='Buy'; }
+      }catch(err){ alert('Network error'); b.textContent='Buy'; }
     }));
   }
   function pickEmoji(n){ const s=n.toLowerCase(); if(s.includes('netflix'))return'🎬'; if(s.includes('chat')||s.includes('ai'))return'🤖'; if(s.includes('game'))return'🎮'; if(s.includes('music')||s.includes('spotify'))return'🎵'; return'⚡'; }
