@@ -97,10 +97,10 @@ async function viewCategories(chatId: number, messageId?: number) {
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...cats.map((c: any) => {
-        const icon = rowIcon(c);
-        const text = icon.icon_custom_emoji_id ? c.name : `${c.icon_emoji || '📦'}  ${c.name}`;
-        return [{ text, callback_data: `cat:${c.id}`, ...icon }];
+        const text = `${c.icon_emoji || '📦'}  ${c.name}`;
+        return [{ text, callback_data: `cat:${c.id}` }];
       }),
+
       [back],
     ],
   };
