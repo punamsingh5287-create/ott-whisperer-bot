@@ -50,7 +50,11 @@ function EmojisPage() {
         <div>
           <h1 className="text-2xl font-black sm:text-3xl">Premium Emoji Manager</h1>
           <p className="text-sm text-muted-foreground">Manage Telegram Premium custom emojis used across bot menus and messages.</p>
+          <p className="mt-1 text-xs text-amber-400/80">
+            ⚠️ Premium emojis on <b>buttons</b> (Bot API 9.4 <code>icon_custom_emoji_id</code>) only render when the bot owner has an active Telegram Premium subscription. The fallback emoji is shown otherwise.
+          </p>
         </div>
+
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button onClick={() => setForm(empty)}><Plus className="mr-1 h-4 w-4" />New emoji</Button>
