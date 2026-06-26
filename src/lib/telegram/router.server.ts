@@ -211,7 +211,7 @@ async function captureDepositProof(chatId: number, botUserId: string, opts: { te
 // Premium button icons are added when Telegram supports them; gateway retries safely without icons otherwise.
 
 
-async function renderCategories(): Promise<RenderedView> {
+async function renderCategories(lang: Lang = 'en'): Promise<RenderedView> {
   const { data } = await db().from('categories')
     .select('id, name, slug, icon_emoji, premium_emoji_id').eq('is_active', true).order('sort_order');
   const cats = data ?? [];
@@ -222,16 +222,16 @@ async function renderCategories(): Promise<RenderedView> {
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...categoryRows,
-      await navRow(),
+      await navRow(lang),
     ],
   };
   const text = categoryLines.length
-    ? `${await e('menu_categories', '🗂')}  <b>Categories</b>\n\n${categoryLines.join('\n')}\n\nChoose a category below:`
-    : `${await e('menu_categories', '🗂')}  <b>Categories</b>\n\nNo categories available yet.`;
+    ? `${await e('menu_categories', '🗂')}  <b>${t(lang, 'categories')}</b>\n\n${categoryLines.join('\n')}\n\n${t(lang, 'cats_choose')}`
+    : `${await e('menu_categories', '🗂')}  <b>${t(lang, 'categories')}</b>\n\n${t(lang, 'cats_empty')}`;
   return { text, reply_markup: kb };
 }
 
-async function renderCategoryProducts(categoryId: string): Promise<RenderedView> {
+async function renderCategoryProducts(categoryId: string, lang: Lang = 'en'): Promise<RenderedView> {
   const supabase = db();
   const [{ data: cat }, { data: prods }] = await Promise.all([
     supabase.from('categories').select('name, slug, icon_emoji, premium_emoji_id').eq('id', categoryId).maybeSingle(),
@@ -239,23 +239,25 @@ async function renderCategoryProducts(categoryId: string): Promise<RenderedView>
       .eq('category_id', categoryId).eq('status', 'active').order('sort_order').limit(50),
   ]);
   const items = prods ?? [];
+  const soldOut = t(lang, 'sold_out');
   const productLines = await Promise.all(items.map(async (p: any) => (
-    `${await productEmoji(p)} <b>${escapeHtml(p.name)}</b> — <b>$${p.price}</b>${p.stock <= 0 ? ' · sold out' : ''}`
+    `${await productEmoji(p)} <b>${escapeHtml(p.name)}</b> — <b>$${p.price}</b>${p.stock <= 0 ? ` · ${soldOut}` : ''}`
   )));
   const productRows = await Promise.all(items.map(async (p: any) => {
-    const label = `${p.name} — $${p.price}${p.stock <= 0 ? ' (sold out)' : ''}`;
+    const label = `${p.name} — $${p.price}${p.stock <= 0 ? ` (${soldOut})` : ''}`;
     return [await mkEmojiBtn(p.fallback_emoji || '✨', label, { callback_data: `prod:${p.id}` }, p.premium_emoji_id)];
   }));
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...productRows,
-      await navRow(),
+      await navRow(lang),
     ],
   };
-  const header = `${cat ? await categoryEmoji(cat) : await e('category_default', '📦')} <b>${escapeHtml(cat?.name || 'Products')}</b>`;
-  const text = items.length ? `${header}\n\n${productLines.join('\n')}\n\nTap a product below for details:` : `${header}\n\nNo products available yet.`;
+  const header = `${cat ? await categoryEmoji(cat) : await e('category_default', '📦')} <b>${escapeHtml(cat?.name || t(lang, 'categories'))}</b>`;
+  const text = items.length ? `${header}\n\n${productLines.join('\n')}\n\n${t(lang, 'prods_choose')}` : `${header}\n\n${t(lang, 'prods_empty')}`;
   return { text, reply_markup: kb };
 }
+
 
 
 async function renderProduct(productId: string): Promise<RenderedView> {
