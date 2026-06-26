@@ -75,6 +75,14 @@ async function backMenu(): Promise<InlineKeyboard> {
 
 
 /* ─── views ───────────────────────────────────────────────────── */
+async function sendOrEdit(chatId: number, messageId: number | undefined, text: string, kb: InlineKeyboard) {
+  if (messageId) {
+    const edited = await editMessage(chatId, messageId, text, kb);
+    if (edited?.ok) return;
+  }
+  await sendMessage(chatId, text, { reply_markup: kb });
+}
+
 async function viewHome(chatId: number, name?: string) {
   const s = await getSettings();
   const welcome = await e('welcome', '✨');
@@ -105,8 +113,7 @@ async function viewCategories(chatId: number, messageId?: number) {
     ],
   };
   const text = `${await e('menu_categories', '🗂')}  <b>Categories</b>\n\nChoose a category to browse:`;
-  if (messageId) await editMessage(chatId, messageId, text, kb);
-  else await sendMessage(chatId, text, { reply_markup: kb });
+  await sendOrEdit(chatId, messageId, text, kb);
 }
 
 async function viewCategoryProducts(chatId: number, categoryId: string, messageId?: number) {
@@ -131,8 +138,7 @@ async function viewCategoryProducts(chatId: number, categoryId: string, messageI
   };
   const header = `${cat?.icon_emoji || '📦'} <b>${escapeHtml(cat?.name || 'Products')}</b>`;
   const text = items.length ? `${header}\n\nTap a product for details:` : `${header}\n\nNo products available yet.`;
-  if (messageId) await editMessage(chatId, messageId, text, kb);
-  else await sendMessage(chatId, text, { reply_markup: kb });
+  await sendOrEdit(chatId, messageId, text, kb);
 }
 
 
