@@ -15,31 +15,42 @@ export function escapeHtml(s: string): string {
 
 /* ── Emoji preset cache (60s) ──────────────────────────────────── */
 type Preset = { premium_emoji_id: string | null; fallback_emoji: string };
-let cache: { at: number; map: Record<string, Preset> } | null = null;
+let cache: { at: number; map: Record<string, Preset>; defaultPremiumId: string | null } | null = null;
 
-async function load(): Promise<Record<string, Preset>> {
-  if (cache && Date.now() - cache.at < 60_000) return cache.map;
+async function load(): Promise<{ map: Record<string, Preset>; defaultPremiumId: string | null }> {
+  if (cache && Date.now() - cache.at < 60_000) return { map: cache.map, defaultPremiumId: cache.defaultPremiumId };
   const { data } = await db().from('emoji_presets').select('key, premium_emoji_id, fallback_emoji');
   const map: Record<string, Preset> = {};
   for (const r of (data ?? []) as any[]) {
     map[r.key] = { premium_emoji_id: r.premium_emoji_id, fallback_emoji: r.fallback_emoji ?? '✨' };
   }
-  cache = { at: Date.now(), map };
-  return map;
+  const defaultPremiumId = String(
+    map.welcome?.premium_emoji_id
+    ?? Object.values(map).find((p) => p.premium_emoji_id)?.premium_emoji_id
+    ?? '',
+  ).replace(/[^0-9]/g, '') || null;
+  cache = { at: Date.now(), map, defaultPremiumId };
+  return { map, defaultPremiumId };
 }
 
 /** Render emoji HTML for a named preset key (e.g. "menu_home"). */
 export async function e(key: string, fallback = '✨'): Promise<string> {
-  const m = await load();
+  const { map: m, defaultPremiumId } = await load();
   const p = m[key];
-  if (!p) return fallback;
-  return renderEmoji(p.premium_emoji_id, p.fallback_emoji);
+  if (!p) return renderEmoji(defaultPremiumId, fallback);
+  return renderEmoji(p.premium_emoji_id || defaultPremiumId, p.fallback_emoji);
 }
 
 /** Plain emoji (no `<tg-emoji>` wrapper) for button labels — the custom icon is sent separately. */
 export async function eb(key: string, fallback = '✨'): Promise<string> {
-  const m = await load();
+  const { map: m } = await load();
   return m[key]?.fallback_emoji ?? fallback;
+}
+
+/** Render dynamic emoji values (products/categories) with the global premium fallback when needed. */
+export async function premiumEmoji(premiumId?: string | null, fallback = '✨'): Promise<string> {
+  const { defaultPremiumId } = await load();
+  return renderEmoji(premiumId || defaultPremiumId, fallback);
 }
 
 /**
@@ -54,10 +65,10 @@ export async function mkBtn(
   label: string,
   action: Record<string, any>,
 ): Promise<any> {
-  const m = await load();
+  const { map: m, defaultPremiumId } = await load();
   const preset = m[key];
   const fb = preset?.fallback_emoji ?? fallback;
-  const premiumId = String(preset?.premium_emoji_id ?? '').replace(/[^0-9]/g, '');
+  const premiumId = String(preset?.premium_emoji_id ?? defaultPremiumId ?? '').replace(/[^0-9]/g, '');
   return {
     text: `${fb}  ${label}`,
     ...(premiumId ? { icon_custom_emoji_id: premiumId } : {}),
