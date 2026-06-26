@@ -544,7 +544,8 @@ export async function handleCallback(cb: any) {
   }
   if (data.startsWith('paid:')) {
     await answerCallback(cb.id, 'Send your tx hash or screenshot now.');
-    await setFlowAction(botUserId, { type: 'payment_proof', payment_id: data.slice(5) });
+    const currentPayment = await getFlowAction<Record<string, unknown>>(botUserId);
+    await setFlowAction(botUserId, { ...(currentPayment ?? {}), type: 'payment_proof', payment_id: data.slice(5) });
     await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'proof', params: { paymentId: data.slice(5) } }, replace: true });
     return;
   }
