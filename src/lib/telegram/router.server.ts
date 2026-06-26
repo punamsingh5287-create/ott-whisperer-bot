@@ -54,7 +54,7 @@ async function productEmoji(p: any): Promise<string> {
 /* ─── user upsert ─────────────────────────────────────────────── */
 function genReferralCode(telegramId: number) { return `R${telegramId.toString(36).toUpperCase()}`; }
 
-async function upsertBotUser(from: TgUser, startPayload?: string): Promise<string> {
+async function upsertBotUser(from: TgUser & { language_code?: string }, startPayload?: string): Promise<string> {
   const supabase = db();
   const { data: existing } = await supabase
     .from('bot_users').select('id').eq('telegram_id', from.id).maybeSingle();
@@ -73,6 +73,7 @@ async function upsertBotUser(from: TgUser, startPayload?: string): Promise<strin
   const { data: inserted, error } = await supabase.from('bot_users').insert({
     telegram_id: from.id, username: from.username ?? null, first_name: from.first_name ?? null,
     referral_code: genReferralCode(from.id), referred_by: referredBy,
+    language: detect(from.language_code),
   }).select('id').single();
   if (error) throw error;
   if (referredBy) {
@@ -81,6 +82,15 @@ async function upsertBotUser(from: TgUser, startPayload?: string): Promise<strin
     });
   }
   return inserted.id as string;
+}
+
+async function getUserLang(botUserId: string): Promise<Lang> {
+  const { data } = await db().from('bot_users').select('language').eq('id', botUserId).maybeSingle();
+  return detect((data as any)?.language);
+}
+
+async function setUserLang(botUserId: string, lang: Lang) {
+  await db().from('bot_users').update({ language: lang }).eq('id', botUserId);
 }
 
 async function getSettings() {
