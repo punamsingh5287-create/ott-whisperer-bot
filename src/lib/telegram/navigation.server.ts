@@ -72,15 +72,18 @@ async function editCurrentMessage(
   messageKind: 'text' | 'media',
   view: RenderedView,
 ): Promise<boolean> {
-  const primary = messageKind === 'media'
-    ? await editMessageCaption(chatId, messageId, view.text, view.reply_markup)
-    : await editMessage(chatId, messageId, view.text, view.reply_markup);
-  if (ok(primary)) return true;
+  const tryText = () => editMessage(chatId, messageId, view.text, view.reply_markup);
+  const tryCaption = () => editMessageCaption(chatId, messageId, view.text, view.reply_markup);
+  const tryMarkup = () => editMessageReplyMarkup(chatId, messageId, view.reply_markup);
 
-  const fallback = messageKind === 'media'
-    ? await editMessage(chatId, messageId, view.text, view.reply_markup)
-    : await editMessageCaption(chatId, messageId, view.text, view.reply_markup);
-  return ok(fallback);
+  const order = messageKind === 'media' ? [tryCaption, tryText] : [tryText, tryCaption];
+  for (const attempt of order) {
+    const r = await attempt();
+    if (ok(r)) return true;
+  }
+  // Last resort: at least refresh the keyboard so the message stays in sync.
+  const r = await tryMarkup();
+  return ok(r);
 }
 
 export async function setFlowAction(botUserId: string, action: Record<string, unknown> | null) {
