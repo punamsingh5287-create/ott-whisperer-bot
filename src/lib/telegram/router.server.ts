@@ -1,28 +1,24 @@
 import { db } from './db.server';
 import {
-  sendMessage, sendVideo, deleteMessage, answerCallback, getMe, getFile, downloadFile,
+  sendMessage, sendPhoto, deleteMessage, answerCallback, getMe, getFile, downloadFile,
   type InlineKeyboard,
 } from './gateway.server';
 import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
 import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavState, type RenderedView } from './navigation.server';
 import { LANGS, t, detect, type Lang } from './i18n';
 
-const INTRO_VIDEO_URL = 'https://project--0e9ed495-46e4-42a2-801a-3588d25b626e-dev.lovable.app/__l5e/assets-v1/86a1868b-601f-44d2-9070-0877a0fa3fff/bot-intro.mp4';
+const SPLASH_IMAGE_URL = 'https://ott-whisperer-bot.lovable.app/__l5e/assets-v1/5186d4c0-13a2-486e-b26f-49d284ff121a/nexra-splash.png';
 
 async function playStartIntro(chatId: number) {
   try {
-    const sent = await sendVideo(chatId, INTRO_VIDEO_URL, {
-      caption: '<b>⚡ Booting OTT &amp; AI Store…</b>',
-      supports_streaming: true,
-    });
+    const sent = await sendPhoto(chatId, SPLASH_IMAGE_URL, '<b>NEXRA OTT</b> — <i>Premium OTT &amp; AI Access</i>');
     const messageId = sent?.result?.message_id;
     if (messageId) {
-      // Let the cinematic play, then quietly remove it before showing the menu.
-      await new Promise((r) => setTimeout(r, 3200));
+      await new Promise((r) => setTimeout(r, 3000));
       await deleteMessage(chatId, messageId).catch(() => {});
     }
   } catch (err) {
-    console.error('intro video failed', err);
+    console.error('splash failed', err);
   }
 }
 
