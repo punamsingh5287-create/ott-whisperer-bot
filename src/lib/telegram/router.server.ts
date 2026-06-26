@@ -483,29 +483,29 @@ async function renderView(state: NavState, botUserId: string, name?: string): Pr
 
   switch (state.screen) {
     case 'home': return renderHome(name, lang);
-    case 'categories': return renderCategories();
-    case 'category': return renderCategoryProducts(state.params?.categoryId ?? '');
-    case 'product': return renderProduct(state.params?.productId ?? '');
-    case 'buy': return renderBuyNetworks(state.params?.productId ?? '');
-    case 'payment': return renderPayment(state.params?.productId ?? '', state.params?.network as Network, botUserId);
+    case 'categories': return renderCategories(lang);
+    case 'category': return renderCategoryProducts(state.params?.categoryId ?? '', lang);
+    case 'product': return renderProduct(state.params?.productId ?? '', lang);
+    case 'buy': return renderBuyNetworks(state.params?.productId ?? '', lang);
+    case 'payment': return renderPayment(state.params?.productId ?? '', state.params?.network as Network, botUserId, lang);
     case 'proof': return {
-      text: `${await e('status_pending', '⏳')} <b>Payment proof</b>\n\nPlease reply with your <b>transaction hash</b> or send a <b>screenshot</b> of the payment.`,
+      text: `${await e('status_pending', '⏳')} <b>${t(lang, 'payment_proof')}</b>\n\n${t(lang, 'proof_prompt')}`,
       reply_markup: await backMenu(lang),
     };
     case 'payment_review': return {
-      text: `${await e('status_pending', '⏳')} <b>Payment under review</b>\n\nWe received your proof. An admin will verify shortly and update your order.`,
+      text: `${await e('status_pending', '⏳')} <b>${t(lang, 'payment_review')}</b>\n\n${t(lang, 'payment_review_body')}`,
       reply_markup: await backMenu(lang),
     };
-    case 'orders': return renderOrders(botUserId);
-    case 'profile': return renderProfile(botUserId);
-    case 'referrals': return renderReferrals(botUserId);
-    case 'support': return renderSupport(botUserId);
+    case 'orders': return renderOrders(botUserId, lang);
+    case 'profile': return renderProfile(botUserId, lang);
+    case 'referrals': return renderReferrals(botUserId, lang);
+    case 'support': return renderSupport(botUserId, lang);
     case 'support_received': return {
-      text: `${await e('status_success', '✅')} <b>Message received</b>\n\nOur team will reply here soon.`,
+      text: `${await e('status_success', '✅')} <b>${t(lang, 'support_received')}</b>\n\n${t(lang, 'support_received_body')}`,
       reply_markup: await backMenu(lang),
     };
-    case 'search': return renderSearchPrompt(botUserId);
-    case 'search_results': return renderSearchResults(state.params?.query ?? '');
+    case 'search': return renderSearchPrompt(botUserId, lang);
+    case 'search_results': return renderSearchResults(state.params?.query ?? '', lang);
     case 'language': return renderLanguage(lang);
     case 'wallet': return renderWallet(botUserId, lang);
     case 'deposit_proof': return {
