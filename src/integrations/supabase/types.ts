@@ -826,6 +826,16 @@ export type Database = {
           product_name: string
         }[]
       }
+      purchase_with_wallet: {
+        Args: { _bot_user_id: string; _product_id: string }
+        Returns: {
+          amount: number
+          error: string
+          new_balance: number
+          order_id: string
+          product_name: string
+        }[]
+      }
       reject_payment: {
         Args: { _admin_id: string; _note: string; _payment_id: string }
         Returns: undefined
