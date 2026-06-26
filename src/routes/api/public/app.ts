@@ -25,19 +25,21 @@ h1,h2,h3,.display{font-family:'Sora',sans-serif;letter-spacing:-.02em;margin:0}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 a{color:inherit;text-decoration:none}
 
-/* Animated gradient background */
+/* Static gradient background — no per-frame compositing */
 .bg-fx{position:fixed;inset:0;z-index:-2;background:
-  radial-gradient(60% 50% at 15% 10%, rgba(124,58,237,.35), transparent 60%),
-  radial-gradient(50% 40% at 85% 20%, rgba(6,182,212,.30), transparent 60%),
-  radial-gradient(70% 60% at 50% 100%, rgba(37,99,235,.28), transparent 70%),
+  radial-gradient(60% 50% at 15% 10%, rgba(124,58,237,.32), transparent 60%),
+  radial-gradient(50% 40% at 85% 20%, rgba(6,182,212,.26), transparent 60%),
+  radial-gradient(70% 60% at 50% 100%, rgba(37,99,235,.24), transparent 70%),
   #05010f;
-  filter:saturate(120%);
-  animation:bgshift 18s ease-in-out infinite alternate;
 }
-@keyframes bgshift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(0,-2%,0) scale(1.05)}}
-@media (max-width:640px){.bg-fx{animation-duration:32s}}
-@media (prefers-reduced-motion:reduce){.bg-fx{animation:none}canvas#particles{display:none}}
+@media (min-width:900px){
+  .bg-fx{animation:bgshift 24s ease-in-out infinite alternate;will-change:transform}
+  @keyframes bgshift{0%{transform:translate3d(0,0,0)}100%{transform:translate3d(0,-2%,0)}}
+}
 canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
+@media (max-width:640px){canvas#particles{display:none}}
+@media (prefers-reduced-motion:reduce){canvas#particles{display:none}}
+
 
 /* Loader */
 /* Splash */
