@@ -86,10 +86,8 @@ async function viewHome(chatId: number, name?: string) {
   await sendMessage(chatId, text, { reply_markup: await mainMenu() });
 }
 
-function rowIcon(row: { premium_emoji_id?: string | null }): { icon_custom_emoji_id?: string } {
-  const id = row.premium_emoji_id ? String(row.premium_emoji_id).replace(/[^0-9]/g, '') : '';
-  return id ? { icon_custom_emoji_id: id } : {};
-}
+// Inline keyboard buttons don't support icon_custom_emoji_id — use fallback emoji in the label.
+
 
 async function viewCategories(chatId: number, messageId?: number) {
   const { data } = await db().from('categories')
