@@ -14,16 +14,201 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bot_users: {
+        Row: {
+          first_name: string | null
+          id: string
+          is_subscribed: boolean
+          joined_at: string
+          last_active: string
+          telegram_id: number
+          username: string | null
+        }
+        Insert: {
+          first_name?: string | null
+          id?: string
+          is_subscribed?: boolean
+          joined_at?: string
+          last_active?: string
+          telegram_id: number
+          username?: string | null
+        }
+        Update: {
+          first_name?: string | null
+          id?: string
+          is_subscribed?: boolean
+          joined_at?: string
+          last_active?: string
+          telegram_id?: number
+          username?: string | null
+        }
+        Relationships: []
+      }
+      conversions: {
+        Row: {
+          amount: number
+          bot_user_id: string | null
+          created_at: string
+          id: string
+          plan_id: string | null
+          status: string
+        }
+        Insert: {
+          amount: number
+          bot_user_id?: string | null
+          created_at?: string
+          id?: string
+          plan_id?: string | null
+          status?: string
+        }
+        Update: {
+          amount?: number
+          bot_user_id?: string | null
+          created_at?: string
+          id?: string
+          plan_id?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversions_bot_user_id_fkey"
+            columns: ["bot_user_id"]
+            isOneToOne: false
+            referencedRelation: "bot_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ott_content: {
+        Row: {
+          category: string | null
+          content_type: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          poster_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          content_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          poster_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          content_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          poster_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pricing_plans: {
+        Row: {
+          created_at: string
+          duration_days: number
+          features: string | null
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_days: number
+          features?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_days?: number
+          features?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +335,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const
