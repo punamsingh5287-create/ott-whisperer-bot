@@ -163,7 +163,7 @@ async function renderWallet(botUserId: string, lang: Lang): Promise<RenderedView
   const text =
     `💰  <b>${t(lang, 'wallet')}</b>\n\n` +
     `${t(lang, 'balance')}: <b>$${balance.toFixed(2)}</b>\n` +
-    `Total spent: <b>$${spent.toFixed(2)}</b>\n\n` +
+    `${t(lang, 'total_spent')}: <b>$${spent.toFixed(2)}</b>\n\n` +
     `<b>${t(lang, 'deposit')}</b>\n${t(lang, 'deposit_info')}\n\n${networkLines}`;
 
   const rows: InlineKeyboard['inline_keyboard'] = [];
