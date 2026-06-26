@@ -20,7 +20,9 @@ const items = [
   { title: "Categories", url: "/admin/categories", icon: FolderTree },
   { title: "Orders", url: "/admin/orders", icon: ShoppingCart },
   { title: "Payments", url: "/admin/payments", icon: CreditCard },
+  { title: "Wallet Topups", url: "/admin/topups", icon: ArrowDownToLine },
   { title: "Wallets", url: "/admin/wallets", icon: Wallet },
+
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Broadcasts", url: "/admin/broadcasts", icon: Megaphone },
   { title: "Support", url: "/admin/support", icon: LifeBuoy },
