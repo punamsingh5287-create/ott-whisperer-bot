@@ -135,14 +135,15 @@ async function viewProduct(chatId: number, productId: string) {
     `${emoji}  <b>${escapeHtml(p.name)}</b>\n\n` +
     `${escapeHtml(p.description || '')}\n\n` +
     `💰 <b>$${p.price}</b>\n⏳ ${p.duration_days} days\n${stockLine}${tagLine}`;
-  const buy = await eb('action_buy', '🛒');
-  const back = await eb('menu_back', '«');
+  const buy = await mkBtn('action_buy', '🛒', `Buy now — $${p.price}`, { callback_data: `buy:${p.id}` });
+  const back = await mkBtn('menu_back', '«', 'Back', { callback_data: p.category_id ? `cat:${p.category_id}` : 'menu:cats' });
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...(p.stock > 0 ? [[{ text: `${buy} Buy now — $${p.price}`, callback_data: `buy:${p.id}` }]] : []),
-      [{ text: `${back} Back`, callback_data: p.category_id ? `cat:${p.category_id}` : 'menu:cats' }],
+      ...(p.stock > 0 ? [[buy]] : []),
+      [back],
     ],
   };
+
   if (p.image_url) await sendPhoto(chatId, p.image_url, caption, kb);
   else await sendMessage(chatId, caption, { reply_markup: kb });
 }
