@@ -54,7 +54,7 @@ async function productEmoji(p: any): Promise<string> {
 /* ─── user upsert ─────────────────────────────────────────────── */
 function genReferralCode(telegramId: number) { return `R${telegramId.toString(36).toUpperCase()}`; }
 
-async function upsertBotUser(from: TgUser & { language_code?: string }, startPayload?: string): Promise<string> {
+export async function upsertBotUser(from: TgUser & { language_code?: string }, startPayload?: string): Promise<string> {
   const supabase = db();
   const { data: existing } = await supabase
     .from('bot_users').select('id').eq('telegram_id', from.id).maybeSingle();
