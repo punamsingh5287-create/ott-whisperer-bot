@@ -27,8 +27,11 @@ function presetSlug(value?: string | null): string {
 }
 
 async function categoryEmoji(c: any): Promise<string> {
-  const key = presetSlug(c.slug || c.name);
-  return e(key ? `category_${key}` : 'category_default', c.icon_emoji || '📦');
+  return premiumEmoji(c.premium_emoji_id, c.icon_emoji || '📦');
+}
+
+async function categoryBtn(c: any): Promise<any> {
+  return mkEmojiBtn(c.icon_emoji || '📦', c.name, { callback_data: `cat:${c.id}` }, c.premium_emoji_id);
 }
 
 async function productEmoji(p: any): Promise<string> {
