@@ -55,7 +55,7 @@ function OrdersPage() {
                   <div className="text-sm">{o.bot_users?.first_name ?? "—"}</div>
                   <div className="text-xs text-muted-foreground">@{o.bot_users?.username ?? o.bot_users?.telegram_id}</div>
                 </TableCell>
-                <TableCell>₹{o.amount}</TableCell>
+                <TableCell>${o.amount}</TableCell>
                 <TableCell>
                   <Select value={o.status} onValueChange={async (v) => {
                     await setFn({ data: { id: o.id, status: v as any } });
