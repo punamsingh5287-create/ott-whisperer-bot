@@ -497,7 +497,7 @@ async function renderView(state: NavState, botUserId: string, name?: string): Pr
     case 'categories': return renderCategories(lang);
     case 'category': return renderCategoryProducts(state.params?.categoryId ?? '', lang);
     case 'product': return renderProduct(state.params?.productId ?? '', lang);
-    case 'buy': return renderBuyNetworks(state.params?.productId ?? '', lang);
+    case 'buy': return renderBuyNetworks(state.params?.productId ?? '', lang, botUserId);
     case 'payment': return renderPayment(state.params?.productId ?? '', state.params?.network as Network, botUserId, lang);
     case 'proof': return {
       text: `${await e('status_pending', '⏳')} <b>${t(lang, 'payment_proof')}</b>\n\n${t(lang, 'proof_prompt')}`,
