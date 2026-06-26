@@ -257,9 +257,10 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
   const ctx = canvas.getContext('2d');
   let W, H, parts, running = true, last = 0;
   const isMobile = matchMedia('(max-width: 640px)').matches;
-  const COUNT = isMobile ? 18 : 36;
+  const COUNT = isMobile ? 0 : 28;
   const FRAME_MS = 1000 / 30;
-  function size(){ const d=Math.min(devicePixelRatio||1,1.5); W=canvas.clientWidth=innerWidth; H=canvas.clientHeight=innerHeight; canvas.width=W*d; canvas.height=H*d; ctx.setTransform(d,0,0,d,0,0); }
+  function size(){ const d=Math.min(devicePixelRatio||1,1.25); W=canvas.clientWidth=innerWidth; H=canvas.clientHeight=innerHeight; canvas.width=W*d; canvas.height=H*d; ctx.setTransform(d,0,0,d,0,0); }
+
   function init(){ parts=Array.from({length:COUNT},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.4+.6,vx:(Math.random()-.5)*.2,vy:-Math.random()*.3-.05,a:Math.random()*.5+.25,hue:Math.random()<.5?'#7c3aed':'#06b6d4'})); }
   function tick(ts){
     requestAnimationFrame(tick);
