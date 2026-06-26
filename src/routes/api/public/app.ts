@@ -281,22 +281,25 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
   document.addEventListener('visibilitychange',()=>{ running = !document.hidden; });
 
 
-  // Ripple
-  document.addEventListener('pointerdown', e=>{
-    const t = e.target.closest('.cat,.buy,.nav-item,.feature,.card,.bell,.cta');
-    if(!t) return;
-    const r=t.getBoundingClientRect();
-    const span=document.createElement('span');
-    span.className='ripple';
-    const s=Math.max(r.width,r.height);
-    span.style.width=span.style.height=s+'px';
-    span.style.left=(e.clientX-r.left-s/2)+'px';
-    span.style.top=(e.clientY-r.top-s/2)+'px';
-    if(getComputedStyle(t).position==='static') t.style.position='relative';
-    t.appendChild(span);
-    setTimeout(()=>span.remove(),600);
-    haptic('light');
-  });
+  // Ripple — desktop only (DOM allocation per tap is jank on low-end phones)
+  if(!isMobile){
+    document.addEventListener('pointerdown', e=>{
+      const t = e.target.closest('.cat,.buy,.nav-item,.feature,.card,.bell,.cta');
+      if(!t) return;
+      const r=t.getBoundingClientRect();
+      const span=document.createElement('span');
+      span.className='ripple';
+      const s=Math.max(r.width,r.height);
+      span.style.width=span.style.height=s+'px';
+      span.style.left=(e.clientX-r.left-s/2)+'px';
+      span.style.top=(e.clientY-r.top-s/2)+'px';
+      if(getComputedStyle(t).position==='static') t.style.position='relative';
+      t.appendChild(span);
+      setTimeout(()=>span.remove(),600);
+    });
+  }
+  document.addEventListener('pointerdown', e=>{ if(e.target.closest('.cat,.buy,.nav-item,.bell')) haptic('light'); });
+
 
   // User
   const u = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) || null;
