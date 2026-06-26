@@ -595,11 +595,12 @@ async function capturePaymentProof(
     _screenshot_url: screenshotUrl,
   });
   await setFlowAction(botUserId, null);
+  const lang = await getUserLang(botUserId);
   const edited = await navigateTo({ botUserId, chatId, state: { screen: 'payment_review' }, replace: true });
   if (!edited) {
     await sendMessage(chatId,
-      `${await e('status_pending', '⏳')} <b>Payment under review</b>\n\nWe received your proof. An admin will verify shortly and update your order.`,
-      { reply_markup: await backMenu() });
+      `${await e('status_pending', '⏳')} <b>${t(lang, 'payment_review')}</b>\n\n${t(lang, 'payment_review_body')}`,
+      { reply_markup: await backMenu(lang) });
   }
 }
 
