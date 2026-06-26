@@ -5,19 +5,26 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Megaphone,
-  LifeBuoy, Settings, LogOut, Bot,
+  LifeBuoy, Settings, LogOut, Bot, Wallet, CreditCard, Smile, Palette,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getPublicBranding } from "@/lib/admin/payments.functions";
 
 const items = [
   { title: "Overview", url: "/admin", icon: LayoutDashboard, exact: true },
   { title: "Products", url: "/admin/products", icon: Package },
   { title: "Categories", url: "/admin/categories", icon: FolderTree },
   { title: "Orders", url: "/admin/orders", icon: ShoppingCart },
+  { title: "Payments", url: "/admin/payments", icon: CreditCard },
+  { title: "Wallets", url: "/admin/wallets", icon: Wallet },
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Broadcasts", url: "/admin/broadcasts", icon: Megaphone },
   { title: "Support", url: "/admin/support", icon: LifeBuoy },
+  { title: "Emojis", url: "/admin/emojis", icon: Smile },
+  { title: "Branding", url: "/admin/branding", icon: Palette },
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
 
