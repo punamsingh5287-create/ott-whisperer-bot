@@ -160,14 +160,14 @@ async function renderProduct(productId: string): Promise<RenderedView> {
   const { data: p } = await db().from('products').select('*, categories(name, icon_emoji)').eq('id', productId).maybeSingle();
   if (!p) return { text: `${await e('status_error', '⚠️')} Product not found.`, reply_markup: await backMenu() };
   const emoji = await productEmoji(p);
-  const [inStock, outStock, priceIcon, durationIcon, tagIcon] = await Promise.all([
-    e('status_approved', '✅'),
+  const [stockIcon, outStock, priceIcon, durationIcon, tagIcon] = await Promise.all([
+    e('stock', '📦'),
     e('status_rejected', '⛔'),
-    e('price', '💰'),
-    e('duration', '⏳'),
+    e('price', '💵'),
+    e('duration', '📅'),
     e('tag', '🏷'),
   ]);
-  const stockLine = p.stock > 0 ? `${inStock} In stock (${p.stock})` : `${outStock} Out of stock`;
+  const stockLine = p.stock > 0 ? `${stockIcon} In stock (${p.stock})` : `${outStock} Out of stock`;
   const tagLine = (p.tags?.length) ? `\n${tagIcon} ${p.tags.map((t: string) => `<code>${escapeHtml(t)}</code>`).join(' ')}` : '';
   const text =
     `${emoji}  <b>${escapeHtml(p.name)}</b>\n\n` +
