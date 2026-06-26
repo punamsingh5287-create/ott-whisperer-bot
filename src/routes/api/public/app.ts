@@ -403,10 +403,10 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
   fetch('/api/public/storefront').then(r=>r.json()).then(d=>{
     CATS = d.categories||[]; PRODS = d.products||[];
     render();
-    setTimeout(()=>document.getElementById('loader').classList.add('hide'), 600);
+    setTimeout(()=>document.getElementById('loader').classList.add('hide'), 3000);
   }).catch(()=>{
     document.getElementById('grid').innerHTML='<div class="empty" style="grid-column:1/-1">Could not load store</div>';
-    document.getElementById('loader').classList.add('hide');
+    setTimeout(()=>document.getElementById('loader').classList.add('hide'), 3000);
   });
 })();
 </script>
