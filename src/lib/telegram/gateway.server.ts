@@ -15,7 +15,7 @@ function headers(json = true) {
 async function tg(method: string, body: Record<string, unknown>) {
   try {
     const res = await fetch(`${GATEWAY_URL}/${method}`, {
-      method: 'POST', headers: headers(), body: JSON.stringify(body),
+      method: 'POST', headers: headers(), body: JSON.stringify(stripInternalButtonFields(body)),
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data?.ok === false) console.error(`tg ${method} failed`, res.status, data);
@@ -30,26 +30,71 @@ function stripTelegramCustomEmoji(html: string): string {
   return html.replace(/<tg-emoji\s+emoji-id="\d+"\s*>(.*?)<\/tg-emoji>/g, '$1');
 }
 
+function stripButtonCustomEmoji(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripButtonCustomEmoji);
+  if (!value || typeof value !== 'object') return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (key === 'icon_custom_emoji_id' || key === '_fallback_text') continue;
+    if (key === 'text' && typeof (value as any)._fallback_text === 'string') {
+      out.text = (value as any)._fallback_text;
+      continue;
+    }
+    out[key] = stripButtonCustomEmoji(child);
+  }
+  return out;
+}
+
+function stripInternalButtonFields(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripInternalButtonFields);
+  if (!value || typeof value !== 'object') return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (key === '_fallback_text') continue;
+    out[key] = stripInternalButtonFields(child);
+  }
+  return out;
+}
+
+function bodyHasButtonCustomEmoji(body: Record<string, unknown>): boolean {
+  const markup = JSON.stringify(body.reply_markup ?? '');
+  return markup.includes('icon_custom_emoji_id') || markup.includes('_fallback_text');
+}
+
 function shouldRetryWithoutCustomEmoji(data: any): boolean {
   const description = String(data?.description ?? data?.error ?? '').toLowerCase();
-  return description.includes('custom emoji') || description.includes('entity');
+  return description.includes('custom emoji') || description.includes('icon_custom_emoji_id') || description.includes('entity');
 }
 
 async function tgHtml(method: string, body: Record<string, unknown>, htmlKey: 'text' | 'caption') {
   const first = await tg(method, body);
-  if (first?.ok !== false || typeof body[htmlKey] !== 'string' || !String(body[htmlKey]).includes('<tg-emoji')) {
+  if (first?.ok !== false) {
     return first;
   }
   if (!shouldRetryWithoutCustomEmoji(first)) return first;
 
-  return tg(method, {
-    ...body,
-    [htmlKey]: stripTelegramCustomEmoji(String(body[htmlKey])),
-  });
+  const withoutButtonIcons = bodyHasButtonCustomEmoji(body)
+    ? { ...body, reply_markup: stripButtonCustomEmoji(body.reply_markup) }
+    : body;
+
+  if (withoutButtonIcons !== body) {
+    const second = await tg(method, withoutButtonIcons);
+    if (second?.ok !== false || !shouldRetryWithoutCustomEmoji(second)) return second;
+  }
+
+  const nextBody = {
+    ...withoutButtonIcons,
+    ...(typeof withoutButtonIcons[htmlKey] === 'string' && String(withoutButtonIcons[htmlKey]).includes('<tg-emoji')
+      ? { [htmlKey]: stripTelegramCustomEmoji(String(withoutButtonIcons[htmlKey])) }
+      : {}),
+  };
+
+  if (nextBody === withoutButtonIcons) return first;
+  return tg(method, nextBody);
 }
 
 export type InlineKeyboard = {
-  inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
+  inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string; icon_custom_emoji_id?: string; _fallback_text?: string }>>;
 };
 
 export async function sendMessage(
@@ -77,9 +122,12 @@ export async function editMessageCaption(chatId: number, messageId: number, capt
 }
 
 export async function editMessageReplyMarkup(chatId: number, messageId: number, reply_markup?: InlineKeyboard) {
-  return tg('editMessageReplyMarkup', {
+  const body = {
     chat_id: chatId, message_id: messageId, reply_markup,
-  });
+  };
+  const first = await tg('editMessageReplyMarkup', body);
+  if (first?.ok !== false || !bodyHasButtonCustomEmoji(body) || !shouldRetryWithoutCustomEmoji(first)) return first;
+  return tg('editMessageReplyMarkup', { ...body, reply_markup: stripButtonCustomEmoji(reply_markup) });
 }
 
 export async function sendPhoto(chatId: number, photoUrl: string, caption: string, reply_markup?: InlineKeyboard) {

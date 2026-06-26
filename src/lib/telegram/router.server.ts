@@ -3,7 +3,7 @@ import {
   sendMessage, answerCallback, getMe, getFile, downloadFile,
   type InlineKeyboard,
 } from './gateway.server';
-import { renderEmoji, escapeHtml, e, mkBtn } from './emoji';
+import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
 import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavState, type RenderedView } from './navigation.server';
 
 type TgUser = { id: number; username?: string; first_name?: string };
@@ -17,6 +17,23 @@ const NETWORK_LABEL: Record<Network, string> = {
 const NETWORK_KEY: Record<Network, string> = {
   USDT_TRC20: 'pay_trc20', USDT_BEP20: 'pay_bep20', SOL: 'pay_sol',
 };
+
+function presetSlug(value?: string | null): string {
+  return String(value ?? '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+async function categoryEmoji(c: any): Promise<string> {
+  const key = presetSlug(c.slug || c.name);
+  return e(key ? `category_${key}` : 'category_default', c.icon_emoji || '📦');
+}
+
+async function productEmoji(p: any): Promise<string> {
+  return premiumEmoji(p.premium_emoji_id, p.fallback_emoji || '✨');
+}
 
 /* ─── user upsert ─────────────────────────────────────────────── */
 function genReferralCode(telegramId: number) { return `R${telegramId.toString(36).toUpperCase()}`; }
@@ -93,48 +110,54 @@ async function renderHome(name?: string): Promise<RenderedView> {
   return { text, reply_markup: await mainMenu() };
 }
 
-// Inline keyboard buttons don't support icon_custom_emoji_id — use fallback emoji in the label.
+// Premium button icons are added when Telegram supports them; gateway retries safely without icons otherwise.
 
 
 async function renderCategories(): Promise<RenderedView> {
   const { data } = await db().from('categories')
-    .select('id, name, icon_emoji').eq('is_active', true).order('sort_order');
+    .select('id, name, slug, icon_emoji').eq('is_active', true).order('sort_order');
   const cats = data ?? [];
+  const categoryLines = await Promise.all(cats.map(async (c: any) => (
+    `${await categoryEmoji(c)} <b>${escapeHtml(c.name)}</b>`
+  )));
+  const categoryRows = await Promise.all(cats.map(async (c: any) => [
+    await mkEmojiBtn(c.icon_emoji || '📦', c.name, { callback_data: `cat:${c.id}` }),
+  ]));
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...cats.map((c: any) => {
-        const text = `${c.icon_emoji || '📦'}  ${c.name}`;
-        return [{ text, callback_data: `cat:${c.id}` }];
-      }),
-
+      ...categoryRows,
       await navRow(),
     ],
   };
-  const text = `${await e('menu_categories', '🗂')}  <b>Categories</b>\n\nChoose a category to browse:`;
+  const text = categoryLines.length
+    ? `${await e('menu_categories', '🗂')}  <b>Categories</b>\n\n${categoryLines.join('\n')}\n\nChoose a category below:`
+    : `${await e('menu_categories', '🗂')}  <b>Categories</b>\n\nNo categories available yet.`;
   return { text, reply_markup: kb };
 }
 
 async function renderCategoryProducts(categoryId: string): Promise<RenderedView> {
   const supabase = db();
   const [{ data: cat }, { data: prods }] = await Promise.all([
-    supabase.from('categories').select('name, icon_emoji').eq('id', categoryId).maybeSingle(),
+    supabase.from('categories').select('name, slug, icon_emoji').eq('id', categoryId).maybeSingle(),
     supabase.from('products').select('id, name, price, fallback_emoji, premium_emoji_id, stock')
       .eq('category_id', categoryId).eq('status', 'active').order('sort_order').limit(50),
   ]);
   const items = prods ?? [];
+  const productLines = await Promise.all(items.map(async (p: any) => (
+    `${await productEmoji(p)} <b>${escapeHtml(p.name)}</b> — <b>$${p.price}</b>${p.stock <= 0 ? ' · sold out' : ''}`
+  )));
+  const productRows = await Promise.all(items.map(async (p: any) => {
+    const label = `${p.name} — $${p.price}${p.stock <= 0 ? ' (sold out)' : ''}`;
+    return [await mkEmojiBtn(p.fallback_emoji || '✨', label, { callback_data: `prod:${p.id}` }, p.premium_emoji_id)];
+  }));
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...items.map((p: any) => {
-        const label = `${p.name} — $${p.price}${p.stock <= 0 ? ' (sold out)' : ''}`;
-        const text = `${p.fallback_emoji || '✨'}  ${label}`;
-        return [{ text, callback_data: `prod:${p.id}` }];
-      }),
-
+      ...productRows,
       await navRow(),
     ],
   };
-  const header = `${cat?.icon_emoji || '📦'} <b>${escapeHtml(cat?.name || 'Products')}</b>`;
-  const text = items.length ? `${header}\n\nTap a product for details:` : `${header}\n\nNo products available yet.`;
+  const header = `${cat ? await categoryEmoji(cat) : await e('category_default', '📦')} <b>${escapeHtml(cat?.name || 'Products')}</b>`;
+  const text = items.length ? `${header}\n\n${productLines.join('\n')}\n\nTap a product below for details:` : `${header}\n\nNo products available yet.`;
   return { text, reply_markup: kb };
 }
 
@@ -142,13 +165,20 @@ async function renderCategoryProducts(categoryId: string): Promise<RenderedView>
 async function renderProduct(productId: string): Promise<RenderedView> {
   const { data: p } = await db().from('products').select('*, categories(name, icon_emoji)').eq('id', productId).maybeSingle();
   if (!p) return { text: `${await e('status_error', '⚠️')} Product not found.`, reply_markup: await backMenu() };
-  const emoji = renderEmoji(p.premium_emoji_id, p.fallback_emoji);
-  const stockLine = p.stock > 0 ? `✅ In stock (${p.stock})` : `⛔ Out of stock`;
-  const tagLine = (p.tags?.length) ? `\n🏷 ${p.tags.map((t: string) => `<code>${escapeHtml(t)}</code>`).join(' ')}` : '';
+  const emoji = await productEmoji(p);
+  const [inStock, outStock, priceIcon, durationIcon, tagIcon] = await Promise.all([
+    e('status_approved', '✅'),
+    e('status_rejected', '⛔'),
+    e('price', '💰'),
+    e('duration', '⏳'),
+    e('tag', '🏷'),
+  ]);
+  const stockLine = p.stock > 0 ? `${inStock} In stock (${p.stock})` : `${outStock} Out of stock`;
+  const tagLine = (p.tags?.length) ? `\n${tagIcon} ${p.tags.map((t: string) => `<code>${escapeHtml(t)}</code>`).join(' ')}` : '';
   const text =
     `${emoji}  <b>${escapeHtml(p.name)}</b>\n\n` +
     `${escapeHtml(p.description || '')}\n\n` +
-    `💰 <b>$${p.price}</b>\n⏳ ${p.duration_days} days\n${stockLine}${tagLine}`;
+    `${priceIcon} <b>$${p.price}</b>\n${durationIcon} ${p.duration_days} days\n${stockLine}${tagLine}`;
   const buy = await mkBtn('action_buy', '🛒', `Buy now — $${p.price}`, { callback_data: `buy:${p.id}` });
   const kb: InlineKeyboard = {
     inline_keyboard: [
@@ -177,7 +207,7 @@ async function renderBuyNetworks(productId: string): Promise<RenderedView> {
   }
   rows.push(await navRow());
 
-  return { text: `💳 <b>Choose a payment network</b>\n\n` +
+  return { text: `${await e('payment', '💳')} <b>Choose a payment network</b>\n\n` +
     `<b>${escapeHtml(p.name)}</b>\nAmount: <b>$${p.price}</b>\n\n` +
     `Pick the crypto network you'd like to pay with. After paying, send your transaction hash or screenshot here for verification.`,
     reply_markup: { inline_keyboard: rows } };
@@ -226,14 +256,14 @@ async function renderPayment(productId: string, network: Network, botUserId: str
     });
     row = Array.isArray(data) ? data[0] : data;
     if (error || !row || row.error) {
-      const msg = row?.error === 'out_of_stock' ? 'Out of stock 😔'
+        const msg = row?.error === 'out_of_stock' ? 'Out of stock'
         : row?.error === 'inactive' ? 'Product unavailable'
         : row?.error === 'wallet_unavailable' ? 'Wallet not available'
         : 'Could not start payment';
       if (cbId) await answerCallback(cbId, msg, true);
       return { text: `${await e('status_error', '⚠️')} ${escapeHtml(msg)}`, reply_markup: await backMenu() };
     }
-    if (cbId) await answerCallback(cbId, '✅ Order created');
+    if (cbId) await answerCallback(cbId, 'Order created');
     await setFlowAction(botUserId, {
       type: 'payment_proof',
       payment_id: row.payment_id,
@@ -267,16 +297,16 @@ async function renderPayment(productId: string, network: Network, botUserId: str
 /* ─── orders / profile / referrals / support / search ────────── */
 async function renderOrders(botUserId: string): Promise<RenderedView> {
   const { data } = await db().from('orders')
-    .select('id, amount, status, created_at, products(name, fallback_emoji), payments(network, status)')
+    .select('id, amount, status, created_at, products(name, fallback_emoji, premium_emoji_id), payments(network, status)')
     .eq('bot_user_id', botUserId).order('created_at', { ascending: false }).limit(10);
   const rows = (data ?? []) as any[];
   const lines = rows.length
-    ? rows.map((o) => {
+    ? (await Promise.all(rows.map(async (o) => {
         const d = new Date(o.created_at).toLocaleDateString();
         const pay = o.payments?.[0];
         const payLine = pay ? ` · ${pay.network} ${pay.status}` : '';
-        return `${o.products?.fallback_emoji || '🧾'} <b>${escapeHtml(o.products?.name || 'Product')}</b> — $${o.amount} · ${o.status}${payLine} · ${d}`;
-      }).join('\n')
+        return `${await productEmoji(o.products ?? {})} <b>${escapeHtml(o.products?.name || 'Product')}</b> — $${o.amount} · ${o.status}${payLine} · ${d}`;
+      }))).join('\n')
     : 'You have no orders yet.';
   return { text: `${await e('menu_orders', '🧾')} <b>Your orders</b>\n\n${lines}`, reply_markup: await backMenu() };
 }
@@ -285,13 +315,13 @@ async function renderProfile(botUserId: string): Promise<RenderedView> {
   const { data: u } = await db().from('bot_users')
     .select('first_name, username, joined_at, total_spent, is_subscribed, referral_code').eq('id', botUserId).maybeSingle();
   if (!u) return { text: `${await e('status_error', '⚠️')} Profile not found.`, reply_markup: await backMenu() };
-  const sub = await e('subscription', '⭐');
+  const [sub, free] = await Promise.all([e('subscription', '⭐'), e('status_free', '⚪')]);
   return { text: `${await e('menu_profile', '👤')} <b>Your Profile</b>\n\n` +
     `Name: ${escapeHtml(u.first_name || '—')}\n` +
     `Username: @${escapeHtml(u.username || '—')}\n` +
     `Joined: ${new Date(u.joined_at).toLocaleDateString()}\n` +
     `Total spent: $${u.total_spent}\n` +
-    `Status: ${u.is_subscribed ? `${sub} Active` : '⚪ Free'}\n` +
+    `Status: ${u.is_subscribed ? `${sub} Active` : `${free} Free`}\n` +
     `Referral code: <code>${u.referral_code}</code>`,
     reply_markup: await backMenu() };
 }
@@ -332,18 +362,18 @@ async function renderSearchResults(query: string): Promise<RenderedView> {
     .select('id, name, price, fallback_emoji, premium_emoji_id, stock')
     .or(`name.ilike.${q},description.ilike.${q}`).eq('status', 'active').limit(20);
   const items = data ?? [];
+  const resultLines = await Promise.all(items.map(async (p: any) => `${await productEmoji(p)} <b>${escapeHtml(p.name)}</b> — <b>$${p.price}</b>`));
+  const productRows = await Promise.all(items.map(async (p: any) => {
+    const label = `${p.name} — $${p.price}`;
+    return [await mkEmojiBtn(p.fallback_emoji || '✨', label, { callback_data: `prod:${p.id}` }, p.premium_emoji_id)];
+  }));
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...items.map((p: any) => {
-        const label = `${p.name} — $${p.price}`;
-        const text = `${p.fallback_emoji || '✨'}  ${label}`;
-        return [{ text, callback_data: `prod:${p.id}` }];
-      }),
-
+      ...productRows,
       await navRow(),
     ],
   };
-  return { text: items.length ? `${await e('menu_search', '🔎')} Results for "<b>${escapeHtml(query)}</b>":`
+  return { text: items.length ? `${await e('menu_search', '🔎')} Results for "<b>${escapeHtml(query)}</b>":\n\n${resultLines.join('\n')}\n\nChoose a product below:`
       : `${await e('status_error', '⚠️')} No matches for "<b>${escapeHtml(query)}</b>".`,
     reply_markup: kb };
 }
