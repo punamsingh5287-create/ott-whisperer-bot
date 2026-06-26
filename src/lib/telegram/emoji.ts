@@ -36,17 +36,17 @@ export async function e(key: string, fallback = '✨'): Promise<string> {
   return renderEmoji(p.premium_emoji_id, p.fallback_emoji);
 }
 
-/** Plain emoji (no `<tg-emoji>` wrapper) for button labels — Telegram strips HTML there. */
+/** Plain emoji (no `<tg-emoji>` wrapper) for button labels — the custom icon is sent separately. */
 export async function eb(key: string, fallback = '✨'): Promise<string> {
   const m = await load();
   return m[key]?.fallback_emoji ?? fallback;
 }
 
 /**
- * Build an inline-keyboard button. Telegram's InlineKeyboardButton does NOT
- * support `icon_custom_emoji_id` — including it causes Telegram to reject
- * the entire sendMessage/editMessageText request, so menus appear broken.
- * We always render the fallback unicode emoji in the label.
+ * Build an inline-keyboard button with Telegram Premium custom emoji support.
+ * Newer Telegram Bot API versions support `icon_custom_emoji_id` on buttons.
+ * The gateway layer safely retries without this field if Telegram rejects it,
+ * so buttons remain clickable even on unsupported clients/API versions.
  */
 export async function mkBtn(
   key: string,
@@ -55,7 +55,13 @@ export async function mkBtn(
   action: Record<string, any>,
 ): Promise<any> {
   const m = await load();
-  const fb = m[key]?.fallback_emoji ?? fallback;
-  return { text: `${fb}  ${label}`, ...action };
+  const preset = m[key];
+  const fb = preset?.fallback_emoji ?? fallback;
+  const premiumId = String(preset?.premium_emoji_id ?? '').replace(/[^0-9]/g, '');
+  return {
+    text: `${fb}  ${label}`,
+    ...(premiumId ? { icon_custom_emoji_id: premiumId } : {}),
+    ...action,
+  };
 }
 
