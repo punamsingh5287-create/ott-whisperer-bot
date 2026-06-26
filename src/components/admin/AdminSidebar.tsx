@@ -5,19 +5,26 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard, Package, FolderTree, ShoppingCart, Users, Megaphone,
-  LifeBuoy, Settings, LogOut, Bot,
+  LifeBuoy, Settings, LogOut, Bot, Wallet, CreditCard, Smile, Palette,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getPublicBranding } from "@/lib/admin/payments.functions";
 
 const items = [
   { title: "Overview", url: "/admin", icon: LayoutDashboard, exact: true },
   { title: "Products", url: "/admin/products", icon: Package },
   { title: "Categories", url: "/admin/categories", icon: FolderTree },
   { title: "Orders", url: "/admin/orders", icon: ShoppingCart },
+  { title: "Payments", url: "/admin/payments", icon: CreditCard },
+  { title: "Wallets", url: "/admin/wallets", icon: Wallet },
   { title: "Users", url: "/admin/users", icon: Users },
   { title: "Broadcasts", url: "/admin/broadcasts", icon: Megaphone },
   { title: "Support", url: "/admin/support", icon: LifeBuoy },
+  { title: "Emojis", url: "/admin/emojis", icon: Smile },
+  { title: "Branding", url: "/admin/branding", icon: Palette },
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
 
@@ -34,17 +41,24 @@ export function AdminSidebar() {
     navigate({ to: "/auth" });
   };
 
+  const brandingFn = useServerFn(getPublicBranding);
+  const { data: brand } = useQuery({ queryKey: ["public-branding"], queryFn: () => brandingFn(), staleTime: 60_000 });
+  const siteName = brand?.site_name || "OTT & AI Store";
+  const panelTitle = brand?.panel_title || "Admin console";
+  const logo = brand?.panel_logo_url || brand?.logo_url;
+
   return (
-    <Sidebar collapsible="icon" className="border-r">
-      <SidebarHeader className="border-b">
+    <Sidebar collapsible="icon" className="border-r border-white/5 bg-sidebar/80 backdrop-blur-xl">
+      <SidebarHeader className="border-b border-white/5">
         <div className="flex items-center gap-2 px-2 py-3">
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[image:var(--gradient-primary)] btn-glow">
-            <Bot className="h-5 w-5 text-primary-foreground" />
+          <div className="grid h-9 w-9 shrink-0 overflow-hidden place-items-center rounded-xl bg-[image:var(--gradient-primary)] btn-glow">
+            {logo ? <img src={logo} alt="" className="h-full w-full object-cover" />
+              : <Bot className="h-5 w-5 text-primary-foreground" />}
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <div className="truncate text-sm font-bold">OTT & AI Store</div>
-              <div className="truncate text-xs text-muted-foreground">Admin console</div>
+              <div className="truncate text-sm font-bold">{siteName}</div>
+              <div className="truncate text-xs text-muted-foreground">{panelTitle}</div>
             </div>
           )}
         </div>

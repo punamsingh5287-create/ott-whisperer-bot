@@ -73,26 +73,36 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-    ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
-  }),
+  loader: async () => {
+    try {
+      const { getPublicBranding } = await import("@/lib/admin/payments.functions");
+      const brand = await getPublicBranding();
+      return { brand };
+    } catch {
+      return { brand: null };
+    }
+  },
+  head: (ctx) => {
+    const brand = (ctx.loaderData as any)?.brand ?? null;
+    const title = brand?.site_name ?? "OTT & AI Store";
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        { name: "viewport", content: "width=device-width, initial-scale=1" },
+        { title },
+        { name: "description", content: "Premium OTT & AI subscriptions on Telegram." },
+        { name: "author", content: "Lovable" },
+        { property: "og:title", content: title },
+        { property: "og:description", content: "Premium OTT & AI subscriptions on Telegram." },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary" },
+      ],
+      links: [
+        { rel: "stylesheet", href: appCss },
+        ...(brand?.favicon_url ? [{ rel: "icon", href: brand.favicon_url }] : []),
+      ],
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,

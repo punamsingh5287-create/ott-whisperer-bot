@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({ component: OrdersPage });
 
-const STATUS = ["pending", "confirmed", "delivered", "cancelled"] as const;
+const STATUS = ["awaiting_payment", "pending_review", "pending", "confirmed", "delivered", "cancelled"] as const;
 
 function OrdersPage() {
   const qc = useQueryClient();
