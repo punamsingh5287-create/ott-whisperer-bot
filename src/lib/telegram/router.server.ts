@@ -709,6 +709,21 @@ export async function handleCallback(cb: any) {
   if (data === 'menu:profile') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'profile' } }); return; }
   if (data === 'menu:ref') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'referrals' } }); return; }
   if (data === 'menu:support') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'support' } }); return; }
+  if (data === 'menu:wallet') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'wallet' } }); return; }
+  if (data === 'menu:lang') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'language' } }); return; }
+  if (data.startsWith('lang:')) {
+    const newLang = detect(data.slice(5));
+    await setUserLang(botUserId, newLang);
+    await answerCallback(cb.id, t(newLang, 'lang_saved'));
+    await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'home' }, name: cb.from.first_name, reset: true });
+    return;
+  }
+  if (data === 'wallet:deposited') {
+    await answerCallback(cb.id);
+    await setFlowAction(botUserId, { type: 'deposit_proof' });
+    await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'deposit_proof' }, replace: true });
+    return;
+  }
 
   if (data.startsWith('cat:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'category', params: { categoryId: data.slice(4) } } }); return; }
   if (data.startsWith('prod:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'product', params: { productId: data.slice(5) } } }); return; }
