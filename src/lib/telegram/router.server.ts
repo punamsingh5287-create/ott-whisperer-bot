@@ -110,7 +110,7 @@ async function renderHome(name?: string): Promise<RenderedView> {
   return { text, reply_markup: await mainMenu() };
 }
 
-// Inline keyboard buttons don't support icon_custom_emoji_id — use fallback emoji in the label.
+// Premium button icons are added when Telegram supports them; gateway retries safely without icons otherwise.
 
 
 async function renderCategories(): Promise<RenderedView> {
@@ -120,12 +120,12 @@ async function renderCategories(): Promise<RenderedView> {
   const categoryLines = await Promise.all(cats.map(async (c: any) => (
     `${await categoryEmoji(c)} <b>${escapeHtml(c.name)}</b>`
   )));
+  const categoryRows = await Promise.all(cats.map(async (c: any) => [
+    await mkEmojiBtn(c.icon_emoji || '📦', c.name, { callback_data: `cat:${c.id}` }),
+  ]));
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...cats.map((c: any) => {
-        return [mkEmojiBtn(c.icon_emoji || '📦', c.name, { callback_data: `cat:${c.id}` })];
-      }),
-
+      ...categoryRows,
       await navRow(),
     ],
   };
@@ -143,16 +143,16 @@ async function renderCategoryProducts(categoryId: string): Promise<RenderedView>
       .eq('category_id', categoryId).eq('status', 'active').order('sort_order').limit(50),
   ]);
   const items = prods ?? [];
-  const productLines = items.map((p: any) => (
-    `${productEmoji(p)} <b>${escapeHtml(p.name)}</b> — <b>$${p.price}</b>${p.stock <= 0 ? ' · sold out' : ''}`
-  ));
+  const productLines = await Promise.all(items.map(async (p: any) => (
+    `${await productEmoji(p)} <b>${escapeHtml(p.name)}</b> — <b>$${p.price}</b>${p.stock <= 0 ? ' · sold out' : ''}`
+  )));
+  const productRows = await Promise.all(items.map(async (p: any) => {
+    const label = `${p.name} — $${p.price}${p.stock <= 0 ? ' (sold out)' : ''}`;
+    return [await mkEmojiBtn(p.fallback_emoji || '✨', label, { callback_data: `prod:${p.id}` }, p.premium_emoji_id)];
+  }));
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...items.map(async (p: any) => {
-        const label = `${p.name} — $${p.price}${p.stock <= 0 ? ' (sold out)' : ''}`;
-        return [await mkEmojiBtn(p.fallback_emoji || '✨', label, { callback_data: `prod:${p.id}` }, p.premium_emoji_id)];
-      }),
-
+      ...productRows,
       await navRow(),
     ],
   };
@@ -301,12 +301,12 @@ async function renderOrders(botUserId: string): Promise<RenderedView> {
     .eq('bot_user_id', botUserId).order('created_at', { ascending: false }).limit(10);
   const rows = (data ?? []) as any[];
   const lines = rows.length
-    ? rows.map((o) => {
+    ? (await Promise.all(rows.map(async (o) => {
         const d = new Date(o.created_at).toLocaleDateString();
         const pay = o.payments?.[0];
         const payLine = pay ? ` · ${pay.network} ${pay.status}` : '';
         return `${await productEmoji(o.products ?? {})} <b>${escapeHtml(o.products?.name || 'Product')}</b> — $${o.amount} · ${o.status}${payLine} · ${d}`;
-      }).join('\n')
+      }))).join('\n')
     : 'You have no orders yet.';
   return { text: `${await e('menu_orders', '🧾')} <b>Your orders</b>\n\n${lines}`, reply_markup: await backMenu() };
 }
@@ -363,13 +363,13 @@ async function renderSearchResults(query: string): Promise<RenderedView> {
     .or(`name.ilike.${q},description.ilike.${q}`).eq('status', 'active').limit(20);
   const items = data ?? [];
   const resultLines = await Promise.all(items.map(async (p: any) => `${await productEmoji(p)} <b>${escapeHtml(p.name)}</b> — <b>$${p.price}</b>`));
+  const productRows = await Promise.all(items.map(async (p: any) => {
+    const label = `${p.name} — $${p.price}`;
+    return [await mkEmojiBtn(p.fallback_emoji || '✨', label, { callback_data: `prod:${p.id}` }, p.premium_emoji_id)];
+  }));
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...items.map(async (p: any) => {
-        const label = `${p.name} — $${p.price}`;
-        return [await mkEmojiBtn(p.fallback_emoji || '✨', label, { callback_data: `prod:${p.id}` }, p.premium_emoji_id)];
-      }),
-
+      ...productRows,
       await navRow(),
     ],
   };
