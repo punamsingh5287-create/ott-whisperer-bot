@@ -61,16 +61,23 @@ export async function premiumEmoji(premiumId?: string | null, fallback = '✨'):
   return renderEmoji(premiumId || defaultPremiumId, fallback);
 }
 
-/** Build a dynamic inline button (product/category). Inline buttons cannot carry
- * `icon_custom_emoji_id` (Telegram only supports it on reply-keyboard buttons),
- * so we always prepend the fallback unicode emoji to the label. */
+function cleanPremiumId(id?: string | null): string | null {
+  const safe = String(id ?? '').replace(/[^0-9]/g, '');
+  return safe || null;
+}
+
+/** Build a dynamic button with Telegram Premium icon first, then unicode fallback on retry. */
 export async function mkEmojiBtn(
   fallback: string,
   label: string,
   action: Record<string, any>,
-  _premiumId?: string | null,
+  premiumId?: string | null,
 ): Promise<any> {
-  return { text: `${fallback}  ${label}`, ...action };
+  const { defaultPremiumId } = await load();
+  const premium = cleanPremiumId(premiumId || defaultPremiumId);
+  const fallbackText = `${fallback}  ${label}`;
+  if (!premium) return { text: fallbackText, ...action };
+  return { text: label, icon_custom_emoji_id: premium, _fallback_text: fallbackText, ...action };
 }
 
 /** Build an inline-keyboard button from a named preset key. */
@@ -80,11 +87,14 @@ export async function mkBtn(
   label: string,
   action: Record<string, any>,
 ): Promise<any> {
-  const { map: m } = await load();
+  const { map: m, defaultPremiumId } = await load();
   const preset = m[key];
   const fb = preset?.fallback_emoji ?? fallback;
   const lbl = preset?.label?.trim() ? preset.label : label;
-  return { text: `${fb}  ${lbl}`, ...action };
+  const premium = cleanPremiumId(preset?.premium_emoji_id || defaultPremiumId);
+  const fallbackText = `${fb}  ${lbl}`;
+  if (!premium) return { text: fallbackText, ...action };
+  return { text: lbl, icon_custom_emoji_id: premium, _fallback_text: fallbackText, ...action };
 }
 
 
