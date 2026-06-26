@@ -101,29 +101,31 @@ async function getSettings() {
 /* ─── menus ───────────────────────────────────────────────────── */
 const MINI_APP_URL = process.env.MINI_APP_URL || 'https://project--0e9ed495-46e4-42a2-801a-3588d25b626e-dev.lovable.app/api/public/app';
 
-async function mainMenu(): Promise<InlineKeyboard> {
-  const [cats, search, orders, profile, ref, support, close] = await Promise.all([
-    mkBtn('menu_categories', '🗂', 'Categories', { callback_data: 'menu:cats' }),
-    mkBtn('menu_search', '🔎', 'Search', { callback_data: 'menu:search' }),
-    mkBtn('menu_orders', '🧾', 'My Orders', { callback_data: 'menu:orders' }),
-    mkBtn('menu_profile', '👤', 'Profile', { callback_data: 'menu:profile' }),
-    mkBtn('menu_referrals', '🎁', 'Referrals', { callback_data: 'menu:ref' }),
-    mkBtn('menu_support', '💬', 'Support', { callback_data: 'menu:support' }),
-    mkBtn('menu_close', '✕', 'Close', { callback_data: 'nav:close' }),
+async function mainMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
+  const [cats, search, orders, profile, wallet, ref, support, langBtn, close] = await Promise.all([
+    mkBtn('menu_categories', '🗂', t(lang, 'categories'), { callback_data: 'menu:cats' }),
+    mkBtn('menu_search', '🔎', t(lang, 'search'), { callback_data: 'menu:search' }),
+    mkBtn('menu_orders', '🧾', t(lang, 'my_orders'), { callback_data: 'menu:orders' }),
+    mkBtn('menu_profile', '👤', t(lang, 'profile'), { callback_data: 'menu:profile' }),
+    mkBtn('menu_wallet', '💰', t(lang, 'wallet'), { callback_data: 'menu:wallet' }),
+    mkBtn('menu_referrals', '🎁', t(lang, 'referrals'), { callback_data: 'menu:ref' }),
+    mkBtn('menu_support', '💬', t(lang, 'support'), { callback_data: 'menu:support' }),
+    mkBtn('menu_lang', '🌐', t(lang, 'language'), { callback_data: 'menu:lang' }),
+    mkBtn('menu_close', '✕', t(lang, 'close'), { callback_data: 'nav:close' }),
   ]);
-  const openApp = { text: '🚀  Open Store App', web_app: { url: MINI_APP_URL } } as any;
-  return { inline_keyboard: [[openApp], [cats, search], [orders, profile], [ref, support], [close]] };
+  const openApp = { text: `🚀  ${t(lang, 'open_app')}`, web_app: { url: MINI_APP_URL } } as any;
+  return { inline_keyboard: [[openApp], [cats, search], [orders, wallet], [profile, ref], [support, langBtn], [close]] };
 }
 
-async function navRow(includeHome = true): Promise<InlineKeyboard['inline_keyboard'][number]> {
-  const buttons = [await mkBtn('menu_back', '‹', 'Back', { callback_data: 'nav:back' })];
-  if (includeHome) buttons.push(await mkBtn('menu_home', '🏠', 'Home', { callback_data: 'menu:home' }));
-  buttons.push(await mkBtn('menu_close', '✕', 'Close', { callback_data: 'nav:close' }));
+async function navRow(lang: Lang = 'en', includeHome = true): Promise<InlineKeyboard['inline_keyboard'][number]> {
+  const buttons = [await mkBtn('menu_back', '‹', t(lang, 'back'), { callback_data: 'nav:back' })];
+  if (includeHome) buttons.push(await mkBtn('menu_home', '🏠', t(lang, 'home'), { callback_data: 'menu:home' }));
+  buttons.push(await mkBtn('menu_close', '✕', t(lang, 'close'), { callback_data: 'nav:close' }));
   return buttons;
 }
 
-async function backMenu(): Promise<InlineKeyboard> {
-  return { inline_keyboard: [await navRow()] };
+async function backMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
+  return { inline_keyboard: [await navRow(lang)] };
 }
 
 
