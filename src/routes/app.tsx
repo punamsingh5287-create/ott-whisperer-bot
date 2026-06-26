@@ -80,7 +80,7 @@ function MiniApp() {
 
   return (
     <div className="min-h-screen text-white" style={{ background: 'radial-gradient(1200px 600px at 50% -10%, #1a0b3d 0%, #05010f 60%, #000 100%)' }}>
-      {!introDone && <CinematicIntro onDone={() => setIntroDone(true)} />}
+      {!introDone && <Splash onDone={() => setIntroDone(true)} />}
 
       <div className="max-w-3xl mx-auto px-4 pt-6 pb-24">
         <header className="flex items-center justify-between mb-5">
