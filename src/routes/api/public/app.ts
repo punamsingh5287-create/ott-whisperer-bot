@@ -193,6 +193,11 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
     <div class="skel skel-card"></div><div class="skel skel-card"></div>
     <div class="skel skel-card"></div><div class="skel skel-card"></div>
   </div>
+  <div id="walletSheet" class="sheet"></div>
+</div>
+
+<div id="modal" class="modal hidden">
+  <div class="modal-card glass" id="modalContent"></div>
 </div>
 
 <nav class="glass nav">
