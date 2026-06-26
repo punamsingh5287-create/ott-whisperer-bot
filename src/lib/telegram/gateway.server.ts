@@ -26,6 +26,28 @@ async function tg(method: string, body: Record<string, unknown>) {
   }
 }
 
+function stripTelegramCustomEmoji(html: string): string {
+  return html.replace(/<tg-emoji\s+emoji-id="\d+"\s*>(.*?)<\/tg-emoji>/g, '$1');
+}
+
+function shouldRetryWithoutCustomEmoji(data: any): boolean {
+  const description = String(data?.description ?? data?.error ?? '').toLowerCase();
+  return description.includes('custom emoji') || description.includes('entity');
+}
+
+async function tgHtml(method: string, body: Record<string, unknown>, htmlKey: 'text' | 'caption') {
+  const first = await tg(method, body);
+  if (first?.ok !== false || typeof body[htmlKey] !== 'string' || !String(body[htmlKey]).includes('<tg-emoji')) {
+    return first;
+  }
+  if (!shouldRetryWithoutCustomEmoji(first)) return first;
+
+  return tg(method, {
+    ...body,
+    [htmlKey]: stripTelegramCustomEmoji(String(body[htmlKey])),
+  });
+}
+
 export type InlineKeyboard = {
   inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
 };
@@ -34,22 +56,22 @@ export async function sendMessage(
   chatId: number, text: string,
   opts: { reply_markup?: InlineKeyboard; disable_web_page_preview?: boolean } = {},
 ) {
-  return tg('sendMessage', {
+  return tgHtml('sendMessage', {
     chat_id: chatId, text, parse_mode: 'HTML',
     disable_web_page_preview: opts.disable_web_page_preview ?? true,
     reply_markup: opts.reply_markup,
-  });
+  }, 'text');
 }
 
 export async function editMessage(chatId: number, messageId: number, text: string, reply_markup?: InlineKeyboard) {
-  return tg('editMessageText', {
+  return tgHtml('editMessageText', {
     chat_id: chatId, message_id: messageId, text, parse_mode: 'HTML',
     disable_web_page_preview: true, reply_markup,
-  });
+  }, 'text');
 }
 
 export async function sendPhoto(chatId: number, photoUrl: string, caption: string, reply_markup?: InlineKeyboard) {
-  return tg('sendPhoto', { chat_id: chatId, photo: photoUrl, caption, parse_mode: 'HTML', reply_markup });
+  return tgHtml('sendPhoto', { chat_id: chatId, photo: photoUrl, caption, parse_mode: 'HTML', reply_markup }, 'caption');
 }
 
 export async function answerCallback(callbackId: string, text?: string, show_alert = false) {
