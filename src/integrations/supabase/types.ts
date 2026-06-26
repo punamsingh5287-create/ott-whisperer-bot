@@ -187,6 +187,39 @@ export type Database = {
           },
         ]
       }
+      emoji_presets: {
+        Row: {
+          created_at: string
+          fallback_emoji: string
+          id: string
+          key: string
+          name: string
+          premium_emoji_id: string | null
+          scope: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fallback_emoji?: string
+          id?: string
+          key: string
+          name: string
+          premium_emoji_id?: string | null
+          scope?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fallback_emoji?: string
+          id?: string
+          key?: string
+          name?: string
+          premium_emoji_id?: string | null
+          scope?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           amount: number
@@ -273,6 +306,79 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      payments: {
+        Row: {
+          admin_note: string | null
+          amount: number
+          bot_user_id: string | null
+          created_at: string
+          id: string
+          network: Database["public"]["Enums"]["wallet_network"]
+          order_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          screenshot_url: string | null
+          status: string
+          tx_hash: string | null
+          updated_at: string
+          wallet_id: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          amount: number
+          bot_user_id?: string | null
+          created_at?: string
+          id?: string
+          network: Database["public"]["Enums"]["wallet_network"]
+          order_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          screenshot_url?: string | null
+          status?: string
+          tx_hash?: string | null
+          updated_at?: string
+          wallet_id?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          amount?: number
+          bot_user_id?: string | null
+          created_at?: string
+          id?: string
+          network?: Database["public"]["Enums"]["wallet_network"]
+          order_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          screenshot_url?: string | null
+          status?: string
+          tx_hash?: string | null
+          updated_at?: string
+          wallet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_bot_user_id_fkey"
+            columns: ["bot_user_id"]
+            isOneToOne: false
+            referencedRelation: "bot_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pricing_plans: {
         Row: {
@@ -431,28 +537,49 @@ export type Database = {
       }
       settings: {
         Row: {
+          bot_logo_url: string | null
           bot_name: string | null
           bot_username: string | null
+          favicon_url: string | null
+          footer_text: string | null
           id: number
+          logo_url: string | null
+          panel_logo_url: string | null
+          panel_title: string | null
           referral_reward: number
+          site_name: string | null
           support_handle: string | null
           updated_at: string
           welcome_text: string | null
         }
         Insert: {
+          bot_logo_url?: string | null
           bot_name?: string | null
           bot_username?: string | null
+          favicon_url?: string | null
+          footer_text?: string | null
           id?: number
+          logo_url?: string | null
+          panel_logo_url?: string | null
+          panel_title?: string | null
           referral_reward?: number
+          site_name?: string | null
           support_handle?: string | null
           updated_at?: string
           welcome_text?: string | null
         }
         Update: {
+          bot_logo_url?: string | null
           bot_name?: string | null
           bot_username?: string | null
+          favicon_url?: string | null
+          footer_text?: string | null
           id?: number
+          logo_url?: string | null
+          panel_logo_url?: string | null
+          panel_title?: string | null
           referral_reward?: number
+          site_name?: string | null
           support_handle?: string | null
           updated_at?: string
           welcome_text?: string | null
@@ -550,11 +677,67 @@ export type Database = {
         }
         Relationships: []
       }
+      wallets: {
+        Row: {
+          address: string
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string | null
+          network: Database["public"]["Enums"]["wallet_network"]
+          qr_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          network: Database["public"]["Enums"]["wallet_network"]
+          qr_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string | null
+          network?: Database["public"]["Enums"]["wallet_network"]
+          qr_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      approve_payment: {
+        Args: { _admin_id: string; _note: string; _payment_id: string }
+        Returns: {
+          error: string
+          order_id: string
+        }[]
+      }
+      create_pending_order: {
+        Args: {
+          _bot_user_id: string
+          _network: Database["public"]["Enums"]["wallet_network"]
+          _product_id: string
+          _wallet_id: string
+        }
+        Returns: {
+          amount: number
+          error: string
+          order_id: string
+          payment_id: string
+          product_name: string
+          wallet_address: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -571,9 +754,18 @@ export type Database = {
           product_name: string
         }[]
       }
+      reject_payment: {
+        Args: { _admin_id: string; _note: string; _payment_id: string }
+        Returns: undefined
+      }
+      submit_payment_proof: {
+        Args: { _payment_id: string; _screenshot_url: string; _tx_hash: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
+      wallet_network: "USDT_TRC20" | "USDT_BEP20" | "SOL"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -702,6 +894,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      wallet_network: ["USDT_TRC20", "USDT_BEP20", "SOL"],
     },
   },
 } as const
