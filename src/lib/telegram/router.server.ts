@@ -243,6 +243,7 @@ async function renderPayment(productId: string, network: Network, botUserId: str
       network,
     });
   }
+  if (!wallet) return { text: `${await e('status_error', '⚠️')} Wallet details are unavailable.`, reply_markup: await backMenu() };
 
   const pending = await e('status_pending', '⏳');
   const qrLine = wallet.qr_url ? `\nQR: ${escapeHtml(wallet.qr_url)}\n` : '\n';
