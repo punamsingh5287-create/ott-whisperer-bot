@@ -260,9 +260,9 @@ async function renderCategoryProducts(categoryId: string, lang: Lang = 'en'): Pr
 
 
 
-async function renderProduct(productId: string): Promise<RenderedView> {
+async function renderProduct(productId: string, lang: Lang = 'en'): Promise<RenderedView> {
   const { data: p } = await db().from('products').select('*, categories(name, icon_emoji)').eq('id', productId).maybeSingle();
-  if (!p) return { text: `${await e('status_error', '⚠️')} Product not found.`, reply_markup: await backMenu() };
+  if (!p) return { text: `${await e('status_error', '⚠️')} ${t(lang, 'product_not_found')}`, reply_markup: await backMenu(lang) };
   const emoji = await productEmoji(p);
   const [stockIcon, outStock, priceIcon, durationIcon, tagIcon] = await Promise.all([
     e('stock', '📦'),
@@ -271,17 +271,17 @@ async function renderProduct(productId: string): Promise<RenderedView> {
     e('duration', '📅'),
     e('tag', '🏷'),
   ]);
-  const stockLine = p.stock > 0 ? `${stockIcon} In stock (${p.stock})` : `${outStock} Out of stock`;
-  const tagLine = (p.tags?.length) ? `\n${tagIcon} ${p.tags.map((t: string) => `<code>${escapeHtml(t)}</code>`).join(' ')}` : '';
+  const stockLine = p.stock > 0 ? `${stockIcon} ${t(lang, 'in_stock')} (${p.stock})` : `${outStock} ${t(lang, 'out_of_stock')}`;
+  const tagLine = (p.tags?.length) ? `\n${tagIcon} ${p.tags.map((tg: string) => `<code>${escapeHtml(tg)}</code>`).join(' ')}` : '';
   const text =
     `${emoji}  <b>${escapeHtml(p.name)}</b>\n\n` +
     `${escapeHtml(p.description || '')}\n\n` +
-    `${priceIcon} <b>$${p.price}</b>\n${durationIcon} ${p.duration_days} days\n${stockLine}${tagLine}`;
-  const buy = await mkBtn('action_buy', '🛒', `Buy now — $${p.price}`, { callback_data: `buy:${p.id}` });
+    `${priceIcon} <b>$${p.price}</b>\n${durationIcon} ${p.duration_days} ${t(lang, 'days')}\n${stockLine}${tagLine}`;
+  const buy = await mkBtn('action_buy', '🛒', `${t(lang, 'buy_now')} — $${p.price}`, { callback_data: `buy:${p.id}` });
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...(p.stock > 0 ? [[buy]] : []),
-      await navRow(),
+      await navRow(lang),
     ],
   };
   return { text, reply_markup: kb };
