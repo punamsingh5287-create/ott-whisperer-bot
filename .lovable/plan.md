@@ -1,107 +1,62 @@
-## Goal
+# Phase 2 Upgrade Plan
 
-Upgrade the existing project into a complete OTT + AI Store Telegram bot with a premium dark-themed admin dashboard. Build on top of what's already there (`bot_users`, `conversions`, `pricing_plans`, `ott_content`, admin auth, webhook at `/api/public/telegram/webhook`).
+Building on the existing OTT/AI Store bot + admin dashboard. Four feature areas plus a UI polish pass.
 
-## 1. Database changes (one migration)
+## 1. USDT / Crypto Payment System
 
-New / updated tables in `public`:
+**Database (new migration)**
+- `wallets` — `network` (`USDT_TRC20` | `USDT_BEP20` | `SOL`), `address`, `label`, `qr_url`, `is_active`.
+- `payments` — `order_id`, `bot_user_id`, `network`, `amount`, `wallet_id`, `tx_hash`, `screenshot_url`, `status` (`pending` | `approved` | `rejected`), `admin_note`, `reviewed_by`, `reviewed_at`.
+- Extend `orders.status` flow: `awaiting_payment` → `pending_review` → `confirmed`/`rejected`. Modify `purchase_product()` so it no longer auto-confirms; it creates an `awaiting_payment` order without decrementing stock. Stock is decremented on payment approval via a new `approve_payment(payment_id, admin_id)` function.
+- Storage bucket `payment-proofs` (private) with signed-URL reads for admin.
 
-- `categories` — name, slug, icon_emoji, sort_order, is_active
-- `products` — name, slug, description, category_id, price, duration_days, stock, status (active/disabled), image_url, tags[], premium_emoji_id, fallback_emoji, sort_order
-- `orders` — bot_user_id, product_id, amount, status (pending/confirmed/delivered/cancelled), delivery_payload, telegram_message_id, created_at
-- `broadcasts` — title, message, premium_emoji_id, fallback_emoji, target (all/subscribers), sent_count, status, created_by, created_at
-- `support_tickets` — bot_user_id, subject, last_message, status (open/closed), created_at, updated_at
-- `support_messages` — ticket_id, from_admin (bool), body, created_at
-- `referrals` — referrer_bot_user_id, referred_bot_user_id, reward_status
-- `settings` — singleton key/value JSON (support handle, welcome text, etc.)
-- Extend `bot_users` with `referral_code`, `referred_by`, `total_spent`
+**Bot flow**
+- Buy button → pick network (3 inline buttons w/ premium emoji) → bot replies with wallet address, QR, exact amount, order ID, and "I've Paid" button.
+- "I've Paid" → user sends tx hash (text) or screenshot (photo). Saved to `payments` row, order set to `pending_review`, admin gets notification in support channel/log.
+- `/orders` shows full payment history with status badges.
 
-All tables: GRANT to authenticated + service_role, RLS on, admin-only policies via `has_role(auth.uid(), 'admin')`. Seed `categories` (OTT Apps, AI Apps, Gaming, Utilities) and a few sample products. Storage bucket `product-images` (public read, admin write) for logos.
+**Admin**
+- New "Payments" page: list with filters (pending / approved / rejected), screenshot preview, approve/reject buttons with note.
+- New "Wallets" page: CRUD wallet addresses per network, toggle active, upload QR.
 
-## 2. Telegram bot (extend webhook route)
+## 2. Premium Emoji Manager
 
-Rewrite `src/routes/api/public/telegram/webhook.ts` as a clean modular handler:
+**Database**
+- `emoji_presets` — `key` (slug), `name`, `premium_emoji_id`, `fallback_emoji`, `scope` (`button` | `product` | `category` | `system`).
+- Seed defaults for menu/buttons (catalog, search, support, profile, orders, plans, pay, approve, reject, success, error, welcome, broadcast).
 
-- `/start` — premium welcome, auto-create referral code, capture `?start=REF` for referral attribution
-- Inline keyboard main menu: Categories · Search · My Orders · Profile · Referrals · Support
-- Categories → product list (paginated) → product detail (image, premium emoji, price, duration, stock)
-- Buy button → creates `orders` row (status=pending), decrements stock, sends confirmation with premium emoji, marks delivered
-- `/search <query>` and inline "Search" prompt
-- Profile shows joined date, total spent, active subscription
-- Order history shows last 10 orders
-- Referral screen shows code + share link `https://t.me/<bot>?start=REF`
-- Support button opens a ticket (next user message becomes the first message)
-- Premium emoji rendering helper: `<tg-emoji emoji-id="...">FALLBACK</tg-emoji>` everywhere products appear
-- Broadcast worker: server function the admin triggers; iterates `bot_users`, sends with rate limiting
+**Admin**
+- "Emojis" page: CRUD + live `<tg-emoji>` preview rendering.
+- Existing Products & Categories pages get an emoji picker (dropdown from `emoji_presets` or custom).
 
-Modular file layout:
+**Bot**
+- Replace hardcoded emojis in `src/lib/telegram/*` with `getEmoji(key)` that reads cached presets and renders `<tg-emoji emoji-id="…">fallback</tg-emoji>`. Used in main menu, category list, product cards, order messages, payment instructions, broadcast headers, welcome, success/error, profile, stats.
 
-```text
-src/lib/telegram/
-  gateway.ts        // sendMessage, editMessage, sendPhoto, answerCallback
-  emoji.ts          // renderPremiumEmoji()
-  menus.ts          // keyboard builders
-  handlers/
-    start.ts
-    categories.ts
-    products.ts
-    orders.ts
-    profile.ts
-    referrals.ts
-    support.ts
-    search.ts
-  db.ts             // service-role supabase singleton
-```
+## 3. Branding Settings
 
-`webhook.ts` becomes a thin router calling these handlers.
+**Database**
+- Extend `settings` table with brand keys: `site_name`, `panel_title`, `footer_text`, `logo_url`, `panel_logo_url`, `bot_logo_url`, `favicon_url`.
+- Storage bucket `branding` (public) for logo/favicon uploads.
 
-## 3. Admin dashboard
+**Admin**
+- "Branding" tab in Settings: upload fields + text inputs, live preview.
+- Apply to: sidebar logo, dashboard header, `/auth` page, `<link rel="icon">` (injected via `__root.tsx` head loader), invoice/report headers.
 
-Replace `/admin` with a sidebar layout and 8 sections, premium dark SaaS aesthetic.
+## 4. UI Polish — Glassmorphism
 
-```text
-/admin
-  /overview        analytics cards + charts
-  /products        table + add/edit dialog (image upload, premium emoji, category, price, stock, tags)
-  /categories      CRUD with emoji + sort order
-  /orders          filterable table with status actions
-  /users           bot users list, search, ban toggle, conversion history
-  /broadcasts      composer (premium emoji preview) + history, "Send now" button
-  /support         ticket inbox with reply thread (admin reply → Telegram message)
-  /settings        bot welcome text, support handle, referral reward
-```
+- Update `src/styles.css` tokens: deeper black bg, accent retained, add glass utility (`backdrop-blur-xl bg-white/[0.04] border-white/10`), gradient borders, soft glow shadows.
+- Refactor admin cards, sidebar, stat tiles, and tables to glass surfaces with framer-motion fade/slide-in on mount.
+- Premium SaaS feel — Stripe/Vercel inspired spacing & typography (Geist-style via system font stack + tracking).
 
-Server functions in `src/lib/admin/*.functions.ts` for products / orders / broadcasts / tickets / settings, all gated by `requireSupabaseAuth` + `has_role` admin check.
+## Technical Notes
 
-Analytics (`/overview`):
+- All new tables follow the required GRANT + RLS pattern; admin-only writes via `has_role(auth.uid(), 'admin')`, payments readable by owning bot user via service-role bot path.
+- Webhook handler extended with payment-network callback queries and photo/text message routing for proof submission.
+- Branding loaded via a public `get_branding` server function called from `__root.tsx` loader so favicon + site name SSR correctly.
 
-- Total users, active 7d, total orders, revenue, conversion rate
-- 14-day daily joins chart, 14-day revenue chart
-- Top 5 selling products
-- Recent orders table
+## Out of Scope (explicitly)
 
-## 4. Design system
+- On-chain auto-verification of tx hashes (admin manual approve for now — can add Tronscan/BscScan/Solscan API later).
+- Multi-language, escrow, refunds.
 
-- Black premium theme: deep neutral background, single bold accent (electric violet), subtle gradient cards, soft shadows
-- Tokens added to `src/styles.css` (`--accent`, `--accent-glow`, `--gradient-card`, `--shadow-premium`)
-- Replace generic shadcn defaults with premium variants for Card, Button, Badge
-- Mobile responsive sidebar (collapses to drawer)
-
-## 5. Webhook security & registration
-
-Keep existing secret-token verification. After deploy, re-call `setWebhook` with `allowed_updates: ["message","edited_message","callback_query","chat_member"]`.
-
-## Technical notes
-
-- Service-role Supabase client loaded inside handlers only (route file is client-reachable)
-- Image upload via Supabase storage signed upload from admin
-- Broadcast respects Telegram's 30 msgs/sec — `setTimeout` chunking, status updates back to DB
-- Premium emoji rendering uses `parse_mode: "HTML"` everywhere
-- Stock decrement uses a Postgres function `purchase_product(product_id, bot_user_id)` to avoid race conditions
-- Referral attribution: `/start REF` → write `referred_by` if user is new; on first paid order, mark referral rewarded
-
-## Out of scope (confirm if needed)
-
-- Real payment gateway (Razorpay/Stripe) — current flow marks orders as "confirmed" on button tap; we can wire payments next
-- Multi-admin roles beyond the existing `admin` role
-- i18n / Hindi UI strings for the dashboard
+Proceed?
