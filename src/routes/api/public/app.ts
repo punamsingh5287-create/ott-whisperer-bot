@@ -63,10 +63,11 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 .logo-mark{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--c1),var(--c2));box-shadow:var(--glow);display:grid;place-items:center;font-weight:800;font-family:Sora;animation:float 4s ease-in-out infinite}
 .logo-name{font-family:Sora;font-weight:700;font-size:17px}
 .logo-sub{font-size:11px;color:var(--muted)}
-.bell{width:40px;height:40px;border-radius:14px;background:var(--surface);border:1px solid var(--line);display:grid;place-items:center;backdrop-filter:blur(20px)}
+.bell{width:40px;height:40px;border-radius:14px;background:rgba(20,15,40,.7);border:1px solid var(--line);display:grid;place-items:center}
 
-/* Glass card */
-.glass{background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid var(--line);backdrop-filter:blur(24px) saturate(140%);border-radius:22px;box-shadow:0 10px 40px rgba(0,0,0,.4)}
+/* Glass card — flat translucent (no backdrop-filter, GPU-cheap) */
+.glass{background:linear-gradient(180deg,rgba(28,20,55,.72),rgba(14,10,30,.72));border:1px solid var(--line);border-radius:22px;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+
 
 /* Profile */
 .profile{padding:16px;display:flex;align-items:center;gap:14px;margin-bottom:18px;position:relative;overflow:hidden;animation:fadeUp .6s .05s ease both}
