@@ -86,10 +86,8 @@ async function viewHome(chatId: number, name?: string) {
   await sendMessage(chatId, text, { reply_markup: await mainMenu() });
 }
 
-function rowIcon(row: { premium_emoji_id?: string | null }): { icon_custom_emoji_id?: string } {
-  const id = row.premium_emoji_id ? String(row.premium_emoji_id).replace(/[^0-9]/g, '') : '';
-  return id ? { icon_custom_emoji_id: id } : {};
-}
+// Inline keyboard buttons don't support icon_custom_emoji_id — use fallback emoji in the label.
+
 
 async function viewCategories(chatId: number, messageId?: number) {
   const { data } = await db().from('categories')
@@ -99,10 +97,10 @@ async function viewCategories(chatId: number, messageId?: number) {
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...cats.map((c: any) => {
-        const icon = rowIcon(c);
-        const text = icon.icon_custom_emoji_id ? c.name : `${c.icon_emoji || '📦'}  ${c.name}`;
-        return [{ text, callback_data: `cat:${c.id}`, ...icon }];
+        const text = `${c.icon_emoji || '📦'}  ${c.name}`;
+        return [{ text, callback_data: `cat:${c.id}` }];
       }),
+
       [back],
     ],
   };
@@ -123,11 +121,11 @@ async function viewCategoryProducts(chatId: number, categoryId: string, messageI
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...items.map((p: any) => {
-        const icon = rowIcon(p);
         const label = `${p.name} — $${p.price}${p.stock <= 0 ? ' (sold out)' : ''}`;
-        const text = icon.icon_custom_emoji_id ? label : `${p.fallback_emoji || '✨'}  ${label}`;
-        return [{ text, callback_data: `prod:${p.id}`, ...icon }];
+        const text = `${p.fallback_emoji || '✨'}  ${label}`;
+        return [{ text, callback_data: `prod:${p.id}` }];
       }),
+
       [back],
     ],
   };
@@ -306,11 +304,11 @@ async function runSearch(chatId: number, query: string) {
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...items.map((p: any) => {
-        const icon = rowIcon(p);
         const label = `${p.name} — $${p.price}`;
-        const text = icon.icon_custom_emoji_id ? label : `${p.fallback_emoji || '✨'}  ${label}`;
-        return [{ text, callback_data: `prod:${p.id}`, ...icon }];
+        const text = `${p.fallback_emoji || '✨'}  ${label}`;
+        return [{ text, callback_data: `prod:${p.id}` }];
       }),
+
       [back],
     ],
   };
