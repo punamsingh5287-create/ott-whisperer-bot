@@ -288,7 +288,7 @@ async function renderProduct(productId: string, lang: Lang = 'en'): Promise<Rend
 }
 
 /* ─── crypto checkout ─────────────────────────────────────────── */
-export async function renderBuyNetworks(productId: string, lang: Lang = 'en'): Promise<RenderedView> {
+export async function renderBuyNetworks(productId: string, lang: Lang = 'en', botUserId?: string): Promise<RenderedView> {
   const { data: p } = await db().from('products').select('name, price, stock, status').eq('id', productId).maybeSingle();
   if (!p || p.status !== 'active' || p.stock <= 0) {
     return { text: `${await e('status_error', '⚠️')} ${t(lang, 'product_unavailable')}`, reply_markup: await backMenu(lang) };
@@ -296,6 +296,16 @@ export async function renderBuyNetworks(productId: string, lang: Lang = 'en'): P
   const { data: wallets } = await db().from('wallets').select('id, network').eq('is_active', true);
   const have = new Set((wallets ?? []).map((w: any) => w.network));
   const rows: InlineKeyboard['inline_keyboard'] = [];
+
+  let balance = 0;
+  if (botUserId) {
+    const { data: u } = await db().from('bot_users').select('balance').eq('id', botUserId).maybeSingle();
+    balance = Number((u as any)?.balance ?? 0);
+    if (balance >= Number(p.price)) {
+      rows.push([await mkBtn('menu_wallet', '💰', `${t(lang, 'pay_with')} ${t(lang, 'wallet')} ($${balance.toFixed(2)})`, { callback_data: `wpay:${productId}` })]);
+    }
+  }
+
   for (const net of ['USDT_TRC20', 'USDT_BEP20', 'SOL'] as Network[]) {
     if (!have.has(net)) continue;
     rows.push([await mkBtn(NETWORK_KEY[net], '💠', `${t(lang, 'pay_with')} ${NETWORK_LABEL[net]}`, { callback_data: `pay:${net}:${productId}` })]);
@@ -305,8 +315,9 @@ export async function renderBuyNetworks(productId: string, lang: Lang = 'en'): P
   }
   rows.push(await navRow(lang));
 
+  const balanceLine = botUserId ? `${t(lang, 'balance')}: <b>$${balance.toFixed(2)}</b>\n\n` : '';
   return { text: `${await e('payment', '💳')} <b>${t(lang, 'choose_network')}</b>\n\n` +
-    `<b>${escapeHtml(p.name)}</b>\n${t(lang, 'amount')}: <b>$${p.price}</b>\n\n` +
+    `<b>${escapeHtml(p.name)}</b>\n${t(lang, 'amount')}: <b>$${p.price}</b>\n${balanceLine}` +
     `${t(lang, 'pay_intro')}`,
     reply_markup: { inline_keyboard: rows } };
 }
@@ -486,7 +497,7 @@ async function renderView(state: NavState, botUserId: string, name?: string): Pr
     case 'categories': return renderCategories(lang);
     case 'category': return renderCategoryProducts(state.params?.categoryId ?? '', lang);
     case 'product': return renderProduct(state.params?.productId ?? '', lang);
-    case 'buy': return renderBuyNetworks(state.params?.productId ?? '', lang);
+    case 'buy': return renderBuyNetworks(state.params?.productId ?? '', lang, botUserId);
     case 'payment': return renderPayment(state.params?.productId ?? '', state.params?.network as Network, botUserId, lang);
     case 'proof': return {
       text: `${await e('status_pending', '⏳')} <b>${t(lang, 'payment_proof')}</b>\n\n${t(lang, 'proof_prompt')}`,
@@ -727,6 +738,28 @@ export async function handleCallback(cb: any) {
   if (data.startsWith('cat:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'category', params: { categoryId: data.slice(4) } } }); return; }
   if (data.startsWith('prod:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'product', params: { productId: data.slice(5) } } }); return; }
   if (data.startsWith('buy:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'buy', params: { productId: data.slice(4) } } }); return; }
+  if (data.startsWith('wpay:')) {
+    const lang = await getUserLang(botUserId);
+    const productId = data.slice(5);
+    const { data: rpc, error } = await db().rpc('purchase_with_wallet', { _product_id: productId, _bot_user_id: botUserId });
+    const row: any = Array.isArray(rpc) ? rpc[0] : rpc;
+    if (error || !row || row.error) {
+      const msg = row?.error === 'insufficient_balance' ? t(lang, 'insufficient_balance')
+        : row?.error === 'out_of_stock' ? t(lang, 'out_of_stock_err')
+        : row?.error === 'inactive' ? t(lang, 'product_unavailable')
+        : t(lang, 'start_pay_err');
+      await answerCallback(cb.id, msg, true);
+      return;
+    }
+    await answerCallback(cb.id, t(lang, 'payment_approved'));
+    await sendMessage(chatId,
+      `${await e('status_success', '🎉')} <b>${t(lang, 'payment_approved')}</b>\n\n` +
+      `${escapeHtml(row.product_name)} — $${row.amount}\n` +
+      `${t(lang, 'balance')}: <b>$${Number(row.new_balance).toFixed(2)}</b>\n\n` +
+      `${t(lang, 'payment_active')}`);
+    await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'orders' }, replace: true });
+    return;
+  }
   if (data.startsWith('pay:')) {
     const [, net, prodId] = data.split(':');
     await answerCallback(cb.id);
