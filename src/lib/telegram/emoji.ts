@@ -73,7 +73,8 @@ export async function mkEmojiBtn(
   action: Record<string, any>,
   premiumId?: string | null,
 ): Promise<any> {
-  const premium = cleanPremiumId(premiumId);
+  const { defaultPremiumId } = await load();
+  const premium = cleanPremiumId(premiumId || defaultPremiumId);
   const fallbackText = `${fallback}  ${label}`;
   if (!premium) return { text: fallbackText, ...action };
   return { text: label, icon_custom_emoji_id: premium, _fallback_text: fallbackText, ...action };
@@ -86,11 +87,11 @@ export async function mkBtn(
   label: string,
   action: Record<string, any>,
 ): Promise<any> {
-  const { map: m } = await load();
+  const { map: m, defaultPremiumId } = await load();
   const preset = m[key];
   const fb = preset?.fallback_emoji ?? fallback;
   const lbl = preset?.label?.trim() ? preset.label : label;
-  const premium = cleanPremiumId(preset?.premium_emoji_id);
+  const premium = cleanPremiumId(preset?.premium_emoji_id || defaultPremiumId);
   const fallbackText = `${fb}  ${lbl}`;
   if (!premium) return { text: fallbackText, ...action };
   return { text: lbl, icon_custom_emoji_id: premium, _fallback_text: fallbackText, ...action };
