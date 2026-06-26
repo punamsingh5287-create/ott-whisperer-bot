@@ -1,12 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export const Route = createFileRoute('/app')({
   head: () => ({
     meta: [
       { title: 'OTT & AI Store' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1, viewport-fit=cover' },
-      { name: 'theme-color', content: '#05010f' },
+      { name: 'theme-color', content: '#000000' },
     ],
     scripts: [{ src: 'https://telegram.org/js/telegram-web-app.js' }],
   }),
@@ -16,139 +16,33 @@ export const Route = createFileRoute('/app')({
 type Category = { id: string; name: string; icon_emoji?: string | null; premium_emoji_id?: string | null; sort_order?: number | null };
 type Product = { id: string; name: string; description?: string | null; price: number; duration_days?: number | null; stock?: number | null; image_url?: string | null; category_id: string | null };
 
-function CinematicIntro({ onDone }: { onDone: () => void }) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+const SPLASH_URL = '/__l5e/assets-v1/5186d4c0-13a2-486e-b26f-49d284ff121a/nexra-splash.png';
+
+function Splash({ onDone }: { onDone: () => void }) {
   useEffect(() => {
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext('2d')!;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    let w = 0, h = 0;
-    const resize = () => {
-      w = canvas.clientWidth; h = canvas.clientHeight;
-      canvas.width = w * dpr; canvas.height = h * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    type P = { x: number; y: number; vx: number; vy: number; r: number; life: number; hue: number };
-    const particles: P[] = [];
-    const streaks: { x: number; y: number; len: number; speed: number; hue: number; a: number }[] = [];
-    for (let i = 0; i < 14; i++) {
-      streaks.push({
-        x: Math.random() * w, y: Math.random() * h,
-        len: 120 + Math.random() * 280, speed: 6 + Math.random() * 14,
-        hue: [195, 265, 220, 285][Math.floor(Math.random() * 4)], a: Math.random(),
-      });
-    }
-    const start = performance.now();
-    let raf = 0;
-    const tick = (t: number) => {
-      const elapsed = (t - start) / 1000;
-      // background gradient
-      const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.8);
-      g.addColorStop(0, 'rgba(20,10,50,1)');
-      g.addColorStop(0.5, 'rgba(5,2,20,1)');
-      g.addColorStop(1, '#000');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
-
-      // pulse wave from center
-      const pulseR = elapsed * 380;
-      for (let i = 0; i < 3; i++) {
-        const r = pulseR - i * 70;
-        if (r > 0 && r < Math.max(w, h)) {
-          ctx.beginPath();
-          ctx.arc(w / 2, h / 2, r, 0, Math.PI * 2);
-          ctx.strokeStyle = `hsla(${200 + i * 30}, 100%, 65%, ${Math.max(0, 0.5 - r / 800)})`;
-          ctx.lineWidth = 2;
-          ctx.shadowBlur = 30; ctx.shadowColor = `hsl(${200 + i * 30},100%,60%)`;
-          ctx.stroke();
-        }
-      }
-      ctx.shadowBlur = 0;
-
-      // streaks
-      streaks.forEach((s) => {
-        s.x += s.speed; if (s.x - s.len > w) { s.x = -s.len; s.y = Math.random() * h; }
-        const grad = ctx.createLinearGradient(s.x - s.len, s.y, s.x, s.y);
-        grad.addColorStop(0, `hsla(${s.hue},100%,65%,0)`);
-        grad.addColorStop(1, `hsla(${s.hue},100%,75%,0.9)`);
-        ctx.strokeStyle = grad; ctx.lineWidth = 1.5;
-        ctx.shadowBlur = 14; ctx.shadowColor = `hsl(${s.hue},100%,60%)`;
-        ctx.beginPath(); ctx.moveTo(s.x - s.len, s.y); ctx.lineTo(s.x, s.y); ctx.stroke();
-      });
-      ctx.shadowBlur = 0;
-
-      // energy burst spawn
-      if (elapsed < 1.6 && particles.length < 220) {
-        for (let i = 0; i < 6; i++) {
-          const a = Math.random() * Math.PI * 2;
-          const sp = 1 + Math.random() * 5;
-          particles.push({
-            x: w / 2, y: h / 2,
-            vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
-            r: 1 + Math.random() * 2.5, life: 1,
-            hue: [195, 220, 265, 285][Math.floor(Math.random() * 4)],
-          });
-        }
-      }
-      // particles update
-      for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.x += p.vx; p.y += p.vy; p.life -= 0.008;
-        if (p.life <= 0) { particles.splice(i, 1); continue; }
-        ctx.fillStyle = `hsla(${p.hue},100%,70%,${p.life})`;
-        ctx.shadowBlur = 16; ctx.shadowColor = `hsl(${p.hue},100%,65%)`;
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.shadowBlur = 0;
-
-      // central core flare
-      const coreA = Math.max(0, 1 - elapsed / 2.6);
-      const core = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, 220);
-      core.addColorStop(0, `rgba(220,230,255,${0.9 * coreA})`);
-      core.addColorStop(0.3, `rgba(140,90,255,${0.55 * coreA})`);
-      core.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = core; ctx.fillRect(0, 0, w, h);
-
-      // lens flare line
-      const lf = Math.max(0, 1 - Math.abs(elapsed - 1.1) * 1.4);
-      if (lf > 0) {
-        const lg = ctx.createLinearGradient(0, h / 2, w, h / 2);
-        lg.addColorStop(0, 'rgba(120,200,255,0)');
-        lg.addColorStop(0.5, `rgba(180,220,255,${0.6 * lf})`);
-        lg.addColorStop(1, 'rgba(120,200,255,0)');
-        ctx.fillStyle = lg; ctx.fillRect(0, h / 2 - 1, w, 2);
-      }
-
-      if (elapsed < 3.0) raf = requestAnimationFrame(tick);
-      else onDone();
-    };
-    raf = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', resize); };
+    const t = setTimeout(onDone, 3000);
+    return () => clearTimeout(t);
   }, [onDone]);
-
   return (
-    <div className="fixed inset-0 z-50 bg-black overflow-hidden">
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <div className="text-center animate-fade-in" style={{ animationDuration: '1.2s' }}>
-          <div className="text-[11px] tracking-[0.5em] text-cyan-300/80 uppercase mb-3" style={{ textShadow: '0 0 12px rgba(120,220,255,0.9)' }}>
-            Powered by AI
-          </div>
-          <div
-            className="text-4xl md:text-6xl font-black tracking-tight bg-clip-text text-transparent"
-            style={{
-              backgroundImage: 'linear-gradient(120deg,#7dd3fc 0%,#a78bfa 45%,#22d3ee 100%)',
-              filter: 'drop-shadow(0 0 24px rgba(140,100,255,0.55))',
-            }}
-          >
-            OTT &amp; AI STORE
-          </div>
-          <div className="mt-4 text-[10px] tracking-[0.4em] text-violet-200/60 uppercase">Initializing experience</div>
-        </div>
+    <>
+      <style>{`
+        @keyframes nexIn{0%{opacity:0;transform:scale(.9)}100%{opacity:1;transform:scale(1)}}
+        @keyframes nexFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1.005)}}
+        @keyframes nexGlow{0%,100%{filter:drop-shadow(0 0 0 rgba(120,190,255,0))}50%{filter:drop-shadow(0 0 28px rgba(120,190,255,.45))}}
+        @keyframes nexStreak{0%{transform:translateX(0)}100%{transform:translateX(240%)}}
+        .nex-splash{position:fixed;inset:0;z-index:50;background:#000;overflow:hidden;transition:opacity .8s ease-in-out}
+        .nex-splash::before{content:"";position:absolute;left:50%;top:-20%;width:120%;height:80%;transform:translateX(-50%);background:radial-gradient(ellipse at center,rgba(80,150,255,.35),rgba(20,60,140,.12) 40%,transparent 70%)}
+        .nex-streak{position:absolute;left:-40%;width:60%;height:1px;background:linear-gradient(90deg,transparent,rgba(120,190,255,.55),transparent);animation:nexStreak 7s linear infinite}
+        .nex-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transform:scale(.9);animation:nexIn 1500ms cubic-bezier(.4,0,.2,1) forwards,nexFloat 6s ease-in-out 1500ms infinite,nexGlow 2s ease-in-out 1500ms infinite}
+      `}</style>
+      <div className="nex-splash">
+        <div className="nex-streak" style={{ top: '22%' }} />
+        <div className="nex-streak" style={{ top: '42%', animationDuration: '9s', animationDelay: '-3s', opacity: 0.4 }} />
+        <div className="nex-streak" style={{ top: '64%', animationDuration: '11s', animationDelay: '-6s', opacity: 0.35 }} />
+        <div className="nex-streak" style={{ top: '80%', animationDuration: '8s', animationDelay: '-1.5s', opacity: 0.3 }} />
+        <img className="nex-img" src={SPLASH_URL} alt="NEXRA OTT" />
       </div>
-    </div>
+    </>
   );
 }
 
