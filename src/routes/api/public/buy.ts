@@ -20,9 +20,7 @@ export const Route = createFileRoute('/api/public/buy')({
           // navigation state set: we just send a fresh message so the bot picks up from there
           await sendMessage(tgId, view.text, { reply_markup: view.reply_markup });
 
-          // also push nav state for back/home to work
-          const { resetNavigation } = await import('@/lib/telegram/navigation.server');
-          try { await resetNavigation?.(botUserId); } catch {}
+          void botUserId;
 
           return Response.json({ ok: true });
         } catch (e: any) {
