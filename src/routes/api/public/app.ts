@@ -276,9 +276,10 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
     }
     ctx.globalAlpha=1;
   }
-  size(); init(); requestAnimationFrame(tick);
-  addEventListener('resize',()=>{size();init();});
+  size();
+  if(COUNT>0){ init(); requestAnimationFrame(tick); addEventListener('resize',()=>{size();init();}); }
   document.addEventListener('visibilitychange',()=>{ running = !document.hidden; });
+
 
   // Ripple
   document.addEventListener('pointerdown', e=>{
