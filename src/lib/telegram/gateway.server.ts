@@ -30,26 +30,46 @@ function stripTelegramCustomEmoji(html: string): string {
   return html.replace(/<tg-emoji\s+emoji-id="\d+"\s*>(.*?)<\/tg-emoji>/g, '$1');
 }
 
+function stripButtonCustomEmoji(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(stripButtonCustomEmoji);
+  if (!value || typeof value !== 'object') return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (key === 'icon_custom_emoji_id') continue;
+    out[key] = stripButtonCustomEmoji(child);
+  }
+  return out;
+}
+
+function bodyHasButtonCustomEmoji(body: Record<string, unknown>): boolean {
+  return JSON.stringify(body.reply_markup ?? '').includes('icon_custom_emoji_id');
+}
+
 function shouldRetryWithoutCustomEmoji(data: any): boolean {
   const description = String(data?.description ?? data?.error ?? '').toLowerCase();
-  return description.includes('custom emoji') || description.includes('entity');
+  return description.includes('custom emoji') || description.includes('icon_custom_emoji_id') || description.includes('entity');
 }
 
 async function tgHtml(method: string, body: Record<string, unknown>, htmlKey: 'text' | 'caption') {
   const first = await tg(method, body);
-  if (first?.ok !== false || typeof body[htmlKey] !== 'string' || !String(body[htmlKey]).includes('<tg-emoji')) {
+  if (first?.ok !== false) {
     return first;
   }
   if (!shouldRetryWithoutCustomEmoji(first)) return first;
 
-  return tg(method, {
+  const nextBody = {
     ...body,
-    [htmlKey]: stripTelegramCustomEmoji(String(body[htmlKey])),
-  });
+    ...(typeof body[htmlKey] === 'string' && String(body[htmlKey]).includes('<tg-emoji')
+      ? { [htmlKey]: stripTelegramCustomEmoji(String(body[htmlKey])) }
+      : {}),
+    ...(bodyHasButtonCustomEmoji(body) ? { reply_markup: stripButtonCustomEmoji(body.reply_markup) } : {}),
+  };
+
+  return tg(method, nextBody);
 }
 
 export type InlineKeyboard = {
-  inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string }>>;
+  inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string; icon_custom_emoji_id?: string }>>;
 };
 
 export async function sendMessage(
