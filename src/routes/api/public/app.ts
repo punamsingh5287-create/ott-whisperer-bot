@@ -40,13 +40,19 @@ a{color:inherit;text-decoration:none}
 canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 
 /* Loader */
-#loader{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:radial-gradient(circle at center,#0a0420 0%,#02010a 70%);transition:opacity .6s ease,visibility .6s}
+/* Splash */
+#loader{position:fixed;inset:0;z-index:50;background:#000;transition:opacity .8s ease-in-out,visibility .8s;overflow:hidden}
 #loader.hide{opacity:0;visibility:hidden}
-.orb{width:120px;height:120px;border-radius:50%;background:conic-gradient(from 0deg,var(--c1),var(--c2),var(--c4),var(--c1));filter:blur(2px);animation:spin 2.4s linear infinite;box-shadow:var(--glow)}
-.orb::after{content:"";position:absolute;inset:14px;border-radius:50%;background:#05010f}
-.orb-wrap{position:relative;display:grid;place-items:center}
-.orb-label{position:absolute;font-family:Sora;font-weight:700;font-size:14px;letter-spacing:.3em;color:#fff;text-shadow:0 0 12px rgba(124,58,237,.8)}
-@keyframes spin{to{transform:rotate(360deg)}}
+#loader::before{content:"";position:absolute;left:50%;top:-20%;width:120%;height:80%;transform:translateX(-50%);background:radial-gradient(ellipse at center,rgba(80,150,255,.35),rgba(20,60,140,.12) 40%,transparent 70%);pointer-events:none}
+.streak{position:absolute;left:-40%;width:60%;height:1px;background:linear-gradient(90deg,transparent,rgba(120,190,255,.55),transparent);filter:blur(.5px);opacity:.55;animation:streak 7s linear infinite}
+.streak.s2{top:38%;animation-duration:9s;animation-delay:-3s;opacity:.4}
+.streak.s3{top:62%;animation-duration:11s;animation-delay:-6s;opacity:.35}
+.streak.s4{top:78%;animation-duration:8s;animation-delay:-1.5s;opacity:.3}
+@keyframes streak{0%{transform:translateX(0)}100%{transform:translateX(240%)}}
+.splash-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center;image-rendering:auto;opacity:0;transform:scale(.9);animation:splashIn 1500ms cubic-bezier(.4,0,.2,1) forwards,splashFloat 6s ease-in-out 1500ms infinite,splashGlow 2s ease-in-out 1500ms infinite}
+@keyframes splashIn{0%{opacity:0;transform:scale(.9)}100%{opacity:1;transform:scale(1)}}
+@keyframes splashFloat{0%,100%{transform:scale(1) translateY(0)}50%{transform:scale(1.005) translateY(-6px)}}
+@keyframes splashGlow{0%,100%{filter:drop-shadow(0 0 0 rgba(120,190,255,0))}50%{filter:drop-shadow(0 0 28px rgba(120,190,255,.45))}}
 
 /* Layout */
 .wrap{max-width:520px;margin:0 auto;padding:18px 16px 24px}
