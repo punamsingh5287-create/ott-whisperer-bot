@@ -57,7 +57,7 @@ function SettingsPage() {
         </div>
         <div className="md:col-span-2"><Label>Welcome text</Label><Textarea rows={4} value={form.welcome_text ?? ""} onChange={(e) => setForm({ ...form, welcome_text: e.target.value })} /></div>
         <div><Label>Support handle</Label><Input value={form.support_handle ?? ""} onChange={(e) => setForm({ ...form, support_handle: e.target.value })} /></div>
-        <div><Label>Referral reward (₹)</Label><Input type="number" value={form.referral_reward ?? 0} onChange={(e) => setForm({ ...form, referral_reward: e.target.value })} /></div>
+        <div><Label>Referral reward ($)</Label><Input type="number" value={form.referral_reward ?? 0} onChange={(e) => setForm({ ...form, referral_reward: e.target.value })} /></div>
         <div className="md:col-span-2"><Button onClick={save}>Save settings</Button></div>
       </Card>
     </div>

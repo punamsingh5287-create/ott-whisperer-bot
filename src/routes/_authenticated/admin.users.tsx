@@ -51,7 +51,7 @@ function UsersPage() {
                   <div className="font-medium">{u.first_name ?? "—"}</div>
                   <div className="text-xs text-muted-foreground">@{u.username ?? u.telegram_id} · <code>{u.referral_code}</code></div>
                 </TableCell>
-                <TableCell>₹{u.total_spent}</TableCell>
+                <TableCell>${u.total_spent}</TableCell>
                 <TableCell>{u.is_subscribed ? <Badge>Subscribed</Badge> : <Badge variant="secondary">Free</Badge>}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{new Date(u.joined_at).toLocaleDateString()}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{new Date(u.last_active).toLocaleDateString()}</TableCell>

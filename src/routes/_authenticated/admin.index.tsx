@@ -47,7 +47,7 @@ function Overview() {
         <StatCard icon={Activity} label="Active 7d" value={data.activeUsers} />
         <StatCard icon={TrendingUp} label="Subscribers" value={data.subscribers} hint={`${data.conversionRate}% conv.`} />
         <StatCard icon={ShoppingCart} label="Orders" value={data.totalOrders} />
-        <StatCard icon={DollarSign} label="Revenue" value={`₹${data.revenue}`} />
+        <StatCard icon={DollarSign} label="Revenue" value={`$${data.revenue}`} />
         <StatCard icon={Package} label="Products" value={data.products} />
       </div>
 
@@ -85,7 +85,7 @@ function Overview() {
                   <span className="text-lg">{p.emoji}</span>
                   <span className="truncate text-sm font-medium">{p.name}</span>
                 </div>
-                <div className="text-xs text-muted-foreground">{p.count}× · ₹{p.revenue}</div>
+                <div className="text-xs text-muted-foreground">{p.count}× · ${p.revenue}</div>
               </div>
             ))}
           </div>

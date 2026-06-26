@@ -140,7 +140,7 @@ function ProductsPage() {
                 <Textarea rows={3} value={form.description ?? ""} onChange={(e) => setForm({ ...form, description: e.target.value })} />
               </div>
               <div>
-                <Label>Price (₹)</Label>
+                <Label>Price ($)</Label>
                 <Input type="number" min={0} value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
               </div>
               <div>
@@ -185,7 +185,7 @@ function ProductsPage() {
               <div className="rounded-md border bg-muted/40 p-3 sm:col-span-2">
                 <div className="text-xs uppercase tracking-wider text-muted-foreground">Preview in bot</div>
                 <div className="mt-1 text-sm">
-                  {form.fallback_emoji || "✨"}  <b>{form.name || "Product name"}</b> — ₹{form.price || 0}
+                  {form.fallback_emoji || "✨"}  <b>{form.name || "Product name"}</b> — ${form.price || 0}
                 </div>
               </div>
             </div>
@@ -226,7 +226,7 @@ function ProductsPage() {
                   </div>
                 </TableCell>
                 <TableCell>{p.categories ? `${p.categories.icon_emoji} ${p.categories.name}` : "—"}</TableCell>
-                <TableCell>₹{p.price}</TableCell>
+                <TableCell>${p.price}</TableCell>
                 <TableCell>{p.stock}</TableCell>
                 <TableCell><Badge variant={p.status === "active" ? "default" : "secondary"}>{p.status}</Badge></TableCell>
                 <TableCell className="text-right">
