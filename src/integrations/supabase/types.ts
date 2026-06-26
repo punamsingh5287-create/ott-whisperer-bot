@@ -193,6 +193,7 @@ export type Database = {
           fallback_emoji: string
           id: string
           key: string
+          label: string | null
           name: string
           premium_emoji_id: string | null
           scope: string
@@ -203,6 +204,7 @@ export type Database = {
           fallback_emoji?: string
           id?: string
           key: string
+          label?: string | null
           name: string
           premium_emoji_id?: string | null
           scope?: string
@@ -213,6 +215,7 @@ export type Database = {
           fallback_emoji?: string
           id?: string
           key?: string
+          label?: string | null
           name?: string
           premium_emoji_id?: string | null
           scope?: string
