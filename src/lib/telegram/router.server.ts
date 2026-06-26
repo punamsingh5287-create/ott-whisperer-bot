@@ -613,12 +613,36 @@ export async function handleMessage(message: any) {
   const startPayload = text.startsWith('/start') ? text.split(' ')[1] : undefined;
   const botUserId = await upsertBotUser(message.from, startPayload);
 
+  // Mini App → bot data bridge
+  if (message.web_app_data?.data) {
+    let payload: any = null;
+    try { payload = JSON.parse(message.web_app_data.data); } catch { payload = { raw: message.web_app_data.data }; }
+    if (payload?.action === 'buy' && payload.product_id) {
+      await navigateTo({ botUserId, chatId, state: { screen: 'buy', params: { productId: payload.product_id } }, forceNewMessage: true });
+      return;
+    }
+    if (payload?.action === 'lang' && payload.lang) {
+      await setUserLang(botUserId, detect(payload.lang));
+      await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true });
+      return;
+    }
+    if (payload?.action === 'deposit') {
+      await navigateTo({ botUserId, chatId, state: { screen: 'wallet' }, forceNewMessage: true });
+      return;
+    }
+  }
+
   const pending = await getFlowAction<{ type?: string; payment_id?: string }>(botUserId);
 
-  // Photo upload → if user is in payment_proof mode, treat as proof
+  // Photo upload → if user is in payment_proof / deposit_proof mode, treat as proof
   if (message.photo?.length && pending?.type === 'payment_proof' && pending.payment_id) {
     const largest = message.photo[message.photo.length - 1];
     await capturePaymentProof(chatId, botUserId, pending.payment_id, { photoFileId: largest.file_id, text: text || undefined });
+    return;
+  }
+  if (message.photo?.length && pending?.type === 'deposit_proof') {
+    const largest = message.photo[message.photo.length - 1];
+    await captureDepositProof(chatId, botUserId, { photoFileId: largest.file_id, text: text || undefined });
     return;
   }
 
@@ -630,6 +654,9 @@ export async function handleMessage(message: any) {
     if (pending.type === 'support_message') { await captureSupportMessage(chatId, botUserId, text); return; }
     if (pending.type === 'payment_proof' && pending.payment_id && text) {
       await capturePaymentProof(chatId, botUserId, pending.payment_id, { text }); return;
+    }
+    if (pending.type === 'deposit_proof' && text) {
+      await captureDepositProof(chatId, botUserId, { text }); return;
     }
   }
 
@@ -644,6 +671,8 @@ export async function handleMessage(message: any) {
   if (text.startsWith('/profile')) { await navigateTo({ botUserId, chatId, state: { screen: 'profile' }, forceNewMessage: true }); return; }
   if (text.startsWith('/referrals')) { await navigateTo({ botUserId, chatId, state: { screen: 'referrals' }, forceNewMessage: true }); return; }
   if (text.startsWith('/support')) { await navigateTo({ botUserId, chatId, state: { screen: 'support' }, forceNewMessage: true }); return; }
+  if (text.startsWith('/wallet')) { await navigateTo({ botUserId, chatId, state: { screen: 'wallet' }, forceNewMessage: true }); return; }
+  if (text.startsWith('/language') || text.startsWith('/lang')) { await navigateTo({ botUserId, chatId, state: { screen: 'language' }, forceNewMessage: true }); return; }
   if (text.startsWith('/search')) {
     const q = text.slice(7).trim();
     if (q) await navigateTo({ botUserId, chatId, state: { screen: 'search_results', params: { query: q } }, forceNewMessage: true });
