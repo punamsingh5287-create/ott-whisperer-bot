@@ -107,7 +107,7 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 .feature::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 80% at 100% 0,rgba(255,255,255,.18),transparent 50%);pointer-events:none}
 .feature h3{font-size:18px;margin-bottom:6px}
 .feature p{font-size:12px;color:rgba(255,255,255,.75);margin:0 0 14px;max-width:80%}
-.feature .cta{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);font-size:12px;font-weight:600}
+.feature .cta{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.15);font-size:12px;font-weight:600}
 
 /* Product grid */
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;animation:fadeUp .6s .25s ease both}
@@ -116,7 +116,7 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 .card:hover{box-shadow:0 0 0 1px rgba(124,58,237,.6),0 10px 30px rgba(124,58,237,.25)}
 .thumb{aspect-ratio:1/1;border-radius:14px;background:linear-gradient(135deg,#1a0f3d,#0a1a3d);display:grid;place-items:center;font-size:34px;margin-bottom:10px;position:relative;overflow:hidden}
 .thumb img{width:100%;height:100%;object-fit:cover}
-.thumb .pbadge{position:absolute;top:8px;left:8px;font-size:10px;padding:3px 7px;border-radius:999px;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);font-weight:600}
+.thumb .pbadge{position:absolute;top:8px;left:8px;font-size:10px;padding:3px 7px;border-radius:999px;background:rgba(0,0,0,.5);font-weight:600}
 .card h4{font-family:Sora;font-size:13px;font-weight:600;margin:0 0 4px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
 .card .meta{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
 .price{font-family:Sora;font-weight:700;font-size:15px;background:linear-gradient(90deg,var(--c2),var(--c1));-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -148,7 +148,7 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 
 .empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:13px}
 .sheet{display:none}
-.modal{position:fixed;inset:0;background:rgba(2,1,12,.7);backdrop-filter:blur(10px);z-index:60;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s ease}
+.modal{position:fixed;inset:0;background:rgba(2,1,12,.7);z-index:60;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s ease}
 .modal.hidden{display:none}
 .modal-card{width:100%;max-width:520px;margin:0 auto;padding:18px;border-radius:24px 24px 0 0;max-height:82vh;overflow-y:auto;animation:slideUp .35s cubic-bezier(.2,.8,.2,1)}
 .modal-card h3{font-family:Sora;font-size:18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
