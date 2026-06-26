@@ -304,11 +304,11 @@ async function runSearch(chatId: number, query: string) {
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...items.map((p: any) => {
-        const icon = rowIcon(p);
         const label = `${p.name} — $${p.price}`;
-        const text = icon.icon_custom_emoji_id ? label : `${p.fallback_emoji || '✨'}  ${label}`;
-        return [{ text, callback_data: `prod:${p.id}`, ...icon }];
+        const text = `${p.fallback_emoji || '✨'}  ${label}`;
+        return [{ text, callback_data: `prod:${p.id}` }];
       }),
+
       [back],
     ],
   };
