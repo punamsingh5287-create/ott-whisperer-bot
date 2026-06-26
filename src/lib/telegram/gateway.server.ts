@@ -97,9 +97,12 @@ export async function editMessageCaption(chatId: number, messageId: number, capt
 }
 
 export async function editMessageReplyMarkup(chatId: number, messageId: number, reply_markup?: InlineKeyboard) {
-  return tg('editMessageReplyMarkup', {
+  const body = {
     chat_id: chatId, message_id: messageId, reply_markup,
-  });
+  };
+  const first = await tg('editMessageReplyMarkup', body);
+  if (first?.ok !== false || !bodyHasButtonCustomEmoji(body) || !shouldRetryWithoutCustomEmoji(first)) return first;
+  return tg('editMessageReplyMarkup', { ...body, reply_markup: stripButtonCustomEmoji(reply_markup) });
 }
 
 export async function sendPhoto(chatId: number, photoUrl: string, caption: string, reply_markup?: InlineKeyboard) {
