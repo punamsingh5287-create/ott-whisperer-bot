@@ -145,7 +145,7 @@ async function renderProduct(productId: string): Promise<RenderedView> {
   const emoji = renderEmoji(p.premium_emoji_id, p.fallback_emoji);
   const stockLine = p.stock > 0 ? `✅ In stock (${p.stock})` : `⛔ Out of stock`;
   const tagLine = (p.tags?.length) ? `\n🏷 ${p.tags.map((t: string) => `<code>${escapeHtml(t)}</code>`).join(' ')}` : '';
-  const imageLine = p.image_url ? `\n🖼 <a href="${escapeHtml(p.image_url)}">View product image</a>` : '';
+  const imageLine = p.image_url ? `\n🖼 Image: ${escapeHtml(p.image_url)}` : '';
   const text =
     `${emoji}  <b>${escapeHtml(p.name)}</b>\n\n` +
     `${escapeHtml(p.description || '')}\n\n` +
