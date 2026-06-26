@@ -1,10 +1,29 @@
 import { db } from './db.server';
 import {
-  sendMessage, answerCallback, getMe, getFile, downloadFile,
+  sendMessage, sendVideo, deleteMessage, answerCallback, getMe, getFile, downloadFile,
   type InlineKeyboard,
 } from './gateway.server';
 import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
 import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavState, type RenderedView } from './navigation.server';
+
+const INTRO_VIDEO_URL = 'https://project--0e9ed495-46e4-42a2-801a-3588d25b626e-dev.lovable.app/__l5e/assets-v1/86a1868b-601f-44d2-9070-0877a0fa3fff/bot-intro.mp4';
+
+async function playStartIntro(chatId: number) {
+  try {
+    const sent = await sendVideo(chatId, INTRO_VIDEO_URL, {
+      caption: '<b>⚡ Booting OTT &amp; AI Store…</b>',
+      supports_streaming: true,
+    });
+    const messageId = sent?.result?.message_id;
+    if (messageId) {
+      // Let the cinematic play, then quietly remove it before showing the menu.
+      await new Promise((r) => setTimeout(r, 3200));
+      await deleteMessage(chatId, messageId).catch(() => {});
+    }
+  } catch (err) {
+    console.error('intro video failed', err);
+  }
+}
 
 type TgUser = { id: number; username?: string; first_name?: string };
 type Network = 'USDT_TRC20' | 'USDT_BEP20' | 'SOL';
@@ -516,7 +535,12 @@ export async function handleMessage(message: any) {
     }
   }
 
-  if (text.startsWith('/start') || text.startsWith('/menu')) { await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true }); return; }
+  if (text.startsWith('/start')) {
+    await playStartIntro(chatId);
+    await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true });
+    return;
+  }
+  if (text.startsWith('/menu')) { await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true }); return; }
   if (text.startsWith('/categories')) { await navigateTo({ botUserId, chatId, state: { screen: 'categories' }, forceNewMessage: true }); return; }
   if (text.startsWith('/orders')) { await navigateTo({ botUserId, chatId, state: { screen: 'orders' }, forceNewMessage: true }); return; }
   if (text.startsWith('/profile')) { await navigateTo({ botUserId, chatId, state: { screen: 'profile' }, forceNewMessage: true }); return; }

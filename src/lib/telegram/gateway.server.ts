@@ -134,6 +134,25 @@ export async function sendPhoto(chatId: number, photoUrl: string, caption: strin
   return tgHtml('sendPhoto', { chat_id: chatId, photo: photoUrl, caption, parse_mode: 'HTML', reply_markup }, 'caption');
 }
 
+export async function sendVideo(
+  chatId: number,
+  videoUrl: string,
+  opts: { caption?: string; reply_markup?: InlineKeyboard; supports_streaming?: boolean } = {},
+) {
+  return tgHtml('sendVideo', {
+    chat_id: chatId,
+    video: videoUrl,
+    caption: opts.caption ?? '',
+    parse_mode: 'HTML',
+    supports_streaming: opts.supports_streaming ?? true,
+    reply_markup: opts.reply_markup,
+  }, 'caption');
+}
+
+export async function deleteMessage(chatId: number, messageId: number) {
+  return tg('deleteMessage', { chat_id: chatId, message_id: messageId });
+}
+
 export async function answerCallback(callbackId: string, text?: string, show_alert = false) {
   return tg('answerCallbackQuery', { callback_query_id: callbackId, text, show_alert });
 }
