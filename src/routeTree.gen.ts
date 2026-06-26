@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as ApiPublicStorefrontRouteImport } from './routes/api/public/storefront'
+import { Route as ApiPublicMeRouteImport } from './routes/api/public/me'
 import { Route as ApiPublicAppRouteImport } from './routes/api/public/app'
 import { Route as AuthenticatedAdminWalletsRouteImport } from './routes/_authenticated/admin.wallets'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
@@ -63,6 +64,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
 const ApiPublicStorefrontRoute = ApiPublicStorefrontRouteImport.update({
   id: '/api/public/storefront',
   path: '/api/public/storefront',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicMeRoute = ApiPublicMeRouteImport.update({
+  id: '/api/public/me',
+  path: '/api/public/me',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicAppRoute = ApiPublicAppRouteImport.update({
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/wallets': typeof AuthenticatedAdminWalletsRoute
   '/api/public/app': typeof ApiPublicAppRoute
+  '/api/public/me': typeof ApiPublicMeRoute
   '/api/public/storefront': typeof ApiPublicStorefrontRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -187,6 +194,7 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/wallets': typeof AuthenticatedAdminWalletsRoute
   '/api/public/app': typeof ApiPublicAppRoute
+  '/api/public/me': typeof ApiPublicMeRoute
   '/api/public/storefront': typeof ApiPublicStorefrontRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -211,6 +219,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/wallets': typeof AuthenticatedAdminWalletsRoute
   '/api/public/app': typeof ApiPublicAppRoute
+  '/api/public/me': typeof ApiPublicMeRoute
   '/api/public/storefront': typeof ApiPublicStorefrontRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/api/public/telegram/webhook': typeof ApiPublicTelegramWebhookRoute
@@ -235,6 +244,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin/wallets'
     | '/api/public/app'
+    | '/api/public/me'
     | '/api/public/storefront'
     | '/admin/'
     | '/api/public/telegram/webhook'
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin/wallets'
     | '/api/public/app'
+    | '/api/public/me'
     | '/api/public/storefront'
     | '/admin'
     | '/api/public/telegram/webhook'
@@ -279,6 +290,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/wallets'
     | '/api/public/app'
+    | '/api/public/me'
     | '/api/public/storefront'
     | '/_authenticated/admin/'
     | '/api/public/telegram/webhook'
@@ -290,6 +302,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRoute
   AuthRoute: typeof AuthRoute
   ApiPublicAppRoute: typeof ApiPublicAppRoute
+  ApiPublicMeRoute: typeof ApiPublicMeRoute
   ApiPublicStorefrontRoute: typeof ApiPublicStorefrontRoute
   ApiPublicTelegramWebhookRoute: typeof ApiPublicTelegramWebhookRoute
 }
@@ -343,6 +356,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/storefront'
       fullPath: '/api/public/storefront'
       preLoaderRoute: typeof ApiPublicStorefrontRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/me': {
+      id: '/api/public/me'
+      path: '/api/public/me'
+      fullPath: '/api/public/me'
+      preLoaderRoute: typeof ApiPublicMeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/app': {
@@ -498,6 +518,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRoute,
   AuthRoute: AuthRoute,
   ApiPublicAppRoute: ApiPublicAppRoute,
+  ApiPublicMeRoute: ApiPublicMeRoute,
   ApiPublicStorefrontRoute: ApiPublicStorefrontRoute,
   ApiPublicTelegramWebhookRoute: ApiPublicTelegramWebhookRoute,
 }

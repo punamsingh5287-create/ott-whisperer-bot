@@ -5,6 +5,7 @@ import {
 } from './gateway.server';
 import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
 import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavState, type RenderedView } from './navigation.server';
+import { LANGS, t, detect, type Lang } from './i18n';
 
 const INTRO_VIDEO_URL = 'https://project--0e9ed495-46e4-42a2-801a-3588d25b626e-dev.lovable.app/__l5e/assets-v1/86a1868b-601f-44d2-9070-0877a0fa3fff/bot-intro.mp4';
 
