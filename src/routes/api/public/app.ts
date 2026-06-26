@@ -35,6 +35,8 @@ a{color:inherit;text-decoration:none}
   animation:bgshift 18s ease-in-out infinite alternate;
 }
 @keyframes bgshift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(0,-2%,0) scale(1.05)}}
+@media (max-width:640px){.bg-fx{animation-duration:32s}}
+@media (prefers-reduced-motion:reduce){.bg-fx{animation:none}canvas#particles{display:none}}
 canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 
 /* Loader */
@@ -137,7 +139,7 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 
 .empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:13px}
 .sheet{display:none}
-.modal{position:fixed;inset:0;background:rgba(2,1,12,.7);backdrop-filter:blur(14px);z-index:60;display:grid;place-items:flex-end;animation:fadeIn .25s ease}
+.modal{position:fixed;inset:0;background:rgba(2,1,12,.7);backdrop-filter:blur(10px);z-index:60;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s ease}
 .modal.hidden{display:none}
 .modal-card{width:100%;max-width:520px;margin:0 auto;padding:18px;border-radius:24px 24px 0 0;max-height:82vh;overflow-y:auto;animation:slideUp .35s cubic-bezier(.2,.8,.2,1)}
 .modal-card h3{font-family:Sora;font-size:18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
@@ -240,14 +242,32 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
   if(tg){ try{ tg.ready(); tg.expand(); tg.setHeaderColor('#05010f'); tg.setBackgroundColor('#05010f'); }catch(e){} }
   const haptic = (t='light') => { try{ tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred(t); }catch(e){} };
 
-  // Particles
+  // Particles — mobile-friendly: low count, no per-frame shadowBlur, ~30fps cap
   const canvas = document.getElementById('particles');
   const ctx = canvas.getContext('2d');
-  let W, H, parts;
-  function size(){ const d=Math.min(devicePixelRatio||1,2); W=canvas.clientWidth=innerWidth; H=canvas.clientHeight=innerHeight; canvas.width=W*d; canvas.height=H*d; ctx.setTransform(d,0,0,d,0,0); }
-  function init(){ parts=Array.from({length:38},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.6+.4,vx:(Math.random()-.5)*.25,vy:-Math.random()*.35-.05,a:Math.random()*.6+.2,hue:Math.random()<.5?'#7c3aed':'#06b6d4'})); }
-  function tick(){ ctx.clearRect(0,0,W,H); for(const p of parts){ p.x+=p.vx; p.y+=p.vy; if(p.y<-10){p.y=H+10;p.x=Math.random()*W} ctx.beginPath(); ctx.fillStyle=p.hue; ctx.globalAlpha=p.a; ctx.shadowColor=p.hue; ctx.shadowBlur=14; ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); } ctx.globalAlpha=1; ctx.shadowBlur=0; requestAnimationFrame(tick); }
-  size(); init(); tick(); addEventListener('resize',()=>{size();init();});
+  let W, H, parts, running = true, last = 0;
+  const isMobile = matchMedia('(max-width: 640px)').matches;
+  const COUNT = isMobile ? 18 : 36;
+  const FRAME_MS = 1000 / 30;
+  function size(){ const d=Math.min(devicePixelRatio||1,1.5); W=canvas.clientWidth=innerWidth; H=canvas.clientHeight=innerHeight; canvas.width=W*d; canvas.height=H*d; ctx.setTransform(d,0,0,d,0,0); }
+  function init(){ parts=Array.from({length:COUNT},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.4+.6,vx:(Math.random()-.5)*.2,vy:-Math.random()*.3-.05,a:Math.random()*.5+.25,hue:Math.random()<.5?'#7c3aed':'#06b6d4'})); }
+  function tick(ts){
+    requestAnimationFrame(tick);
+    if(!running) return;
+    if(ts - last < FRAME_MS) return;
+    last = ts;
+    ctx.clearRect(0,0,W,H);
+    for(const p of parts){
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.y<-10){p.y=H+10;p.x=Math.random()*W}
+      ctx.beginPath(); ctx.fillStyle=p.hue; ctx.globalAlpha=p.a;
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+  size(); init(); requestAnimationFrame(tick);
+  addEventListener('resize',()=>{size();init();});
+  document.addEventListener('visibilitychange',()=>{ running = !document.hidden; });
 
   // Ripple
   document.addEventListener('pointerdown', e=>{
@@ -312,8 +332,8 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
   // Modal
   const modal=document.getElementById('modal');
   const mc=document.getElementById('modalContent');
-  function openModal(html){ mc.innerHTML=html; modal.classList.remove('hidden'); haptic('light'); }
-  function closeModal(){ modal.classList.add('hidden'); }
+  function openModal(html){ mc.innerHTML=html; modal.classList.remove('hidden'); running=false; haptic('light'); mc.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',closeModal)); }
+  function closeModal(){ modal.classList.add('hidden'); running=true; }
   modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
 
   const LANGS=[{code:'en',name:'English',flag:'🇬🇧'},{code:'ru',name:'Русский',flag:'🇷🇺'},{code:'zh',name:'中文',flag:'🇨🇳'},{code:'pl',name:'Polski',flag:'🇵🇱'},{code:'vi',name:'Tiếng Việt',flag:'🇻🇳'}];
@@ -329,7 +349,7 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 
   async function openWallet(tab){
     const data = await loadMe();
-    if(!data){ openModal('<h3>Wallet <span class="close-x" onclick="document.getElementById(\\'modal\\').classList.add(\\'hidden\\')">✕</span></h3><div class="empty">Open this app from inside Telegram to use your wallet.</div>'); return; }
+    if(!data){ openModal('<h3>Wallet <span class="close-x" data-close>✕</span></h3><div class="empty">Open this app from inside Telegram to use your wallet.</div>'); return; }
     tab = tab || 'wallet';
     const bal = Number(data.user.balance||0).toFixed(2);
     const spent = Number(data.user.total_spent||0).toFixed(2);
