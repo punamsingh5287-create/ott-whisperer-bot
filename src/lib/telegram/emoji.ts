@@ -61,48 +61,31 @@ export async function premiumEmoji(premiumId?: string | null, fallback = '✨'):
   return renderEmoji(premiumId || defaultPremiumId, fallback);
 }
 
-/** Build a dynamic inline button (product/category) with a premium icon fallback. */
+/** Build a dynamic inline button (product/category). Inline buttons cannot carry
+ * `icon_custom_emoji_id` (Telegram only supports it on reply-keyboard buttons),
+ * so we always prepend the fallback unicode emoji to the label. */
 export async function mkEmojiBtn(
   fallback: string,
   label: string,
   action: Record<string, any>,
-  premiumId?: string | null,
+  _premiumId?: string | null,
 ): Promise<any> {
-  const { defaultPremiumId } = await load();
-  const safePremiumId = String(premiumId ?? defaultPremiumId ?? '').replace(/[^0-9]/g, '');
-  const fallbackText = `${fallback}  ${label}`;
-  return {
-    text: safePremiumId ? label : fallbackText,
-    ...(safePremiumId ? { _fallback_text: fallbackText } : {}),
-    ...(safePremiumId ? { icon_custom_emoji_id: safePremiumId } : {}),
-    ...action,
-  };
+  return { text: `${fallback}  ${label}`, ...action };
 }
 
-/**
- * Build an inline-keyboard button with Telegram Premium custom emoji support.
- * Newer Telegram Bot API versions support `icon_custom_emoji_id` on buttons.
- * The gateway layer safely retries without this field if Telegram rejects it,
- * so buttons remain clickable even on unsupported clients/API versions.
- */
+/** Build an inline-keyboard button from a named preset key. */
 export async function mkBtn(
   key: string,
   fallback: string,
   label: string,
   action: Record<string, any>,
 ): Promise<any> {
-  const { map: m, defaultPremiumId } = await load();
+  const { map: m } = await load();
   const preset = m[key];
   const fb = preset?.fallback_emoji ?? fallback;
   const lbl = preset?.label?.trim() ? preset.label : label;
-  const premiumId = String(preset?.premium_emoji_id ?? defaultPremiumId ?? '').replace(/[^0-9]/g, '');
-  const fallbackText = `${fb}  ${lbl}`;
-  return {
-    text: premiumId ? lbl : fallbackText,
-    ...(premiumId ? { _fallback_text: fallbackText } : {}),
-    ...(premiumId ? { icon_custom_emoji_id: premiumId } : {}),
-    ...action,
-  };
+  return { text: `${fb}  ${lbl}`, ...action };
 }
+
 
 
