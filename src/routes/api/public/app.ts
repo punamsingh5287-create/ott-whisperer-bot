@@ -35,6 +35,8 @@ a{color:inherit;text-decoration:none}
   animation:bgshift 18s ease-in-out infinite alternate;
 }
 @keyframes bgshift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(0,-2%,0) scale(1.05)}}
+@media (max-width:640px){.bg-fx{animation-duration:32s}}
+@media (prefers-reduced-motion:reduce){.bg-fx{animation:none}canvas#particles{display:none}}
 canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 
 /* Loader */
