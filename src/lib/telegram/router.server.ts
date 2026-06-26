@@ -86,14 +86,24 @@ async function viewHome(chatId: number, name?: string) {
   await sendMessage(chatId, text, { reply_markup: await mainMenu() });
 }
 
+function rowIcon(row: { premium_emoji_id?: string | null }): { icon_custom_emoji_id?: string } {
+  const id = row.premium_emoji_id ? String(row.premium_emoji_id).replace(/[^0-9]/g, '') : '';
+  return id ? { icon_custom_emoji_id: id } : {};
+}
+
 async function viewCategories(chatId: number, messageId?: number) {
-  const { data } = await db().from('categories').select('id, name, icon_emoji').eq('is_active', true).order('sort_order');
+  const { data } = await db().from('categories')
+    .select('id, name, icon_emoji, premium_emoji_id').eq('is_active', true).order('sort_order');
   const cats = data ?? [];
-  const back = await eb('menu_back', '«');
+  const back = await mkBtn('menu_back', '«', 'Back', { callback_data: 'menu:home' });
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...cats.map((c) => [{ text: `${c.icon_emoji || '📦'}  ${c.name}`, callback_data: `cat:${c.id}` }]),
-      [{ text: `${back} Back`, callback_data: 'menu:home' }],
+      ...cats.map((c: any) => {
+        const icon = rowIcon(c);
+        const text = icon.icon_custom_emoji_id ? c.name : `${c.icon_emoji || '📦'}  ${c.name}`;
+        return [{ text, callback_data: `cat:${c.id}`, ...icon }];
+      }),
+      [back],
     ],
   };
   const text = `${await e('menu_categories', '🗂')}  <b>Categories</b>\n\nChoose a category to browse:`;
@@ -105,18 +115,20 @@ async function viewCategoryProducts(chatId: number, categoryId: string, messageI
   const supabase = db();
   const [{ data: cat }, { data: prods }] = await Promise.all([
     supabase.from('categories').select('name, icon_emoji').eq('id', categoryId).maybeSingle(),
-    supabase.from('products').select('id, name, price, fallback_emoji, stock')
+    supabase.from('products').select('id, name, price, fallback_emoji, premium_emoji_id, stock')
       .eq('category_id', categoryId).eq('status', 'active').order('sort_order').limit(50),
   ]);
   const items = prods ?? [];
-  const back = await eb('menu_back', '«');
+  const back = await mkBtn('menu_back', '«', 'Back', { callback_data: 'menu:cats' });
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...items.map((p) => [{
-        text: `${p.fallback_emoji || '✨'}  ${p.name} — $${p.price}${p.stock <= 0 ? ' (sold out)' : ''}`,
-        callback_data: `prod:${p.id}`,
-      }]),
-      [{ text: `${back} Back`, callback_data: 'menu:cats' }],
+      ...items.map((p: any) => {
+        const icon = rowIcon(p);
+        const label = `${p.name} — $${p.price}${p.stock <= 0 ? ' (sold out)' : ''}`;
+        const text = icon.icon_custom_emoji_id ? label : `${p.fallback_emoji || '✨'}  ${label}`;
+        return [{ text, callback_data: `prod:${p.id}`, ...icon }];
+      }),
+      [back],
     ],
   };
   const header = `${cat?.icon_emoji || '📦'} <b>${escapeHtml(cat?.name || 'Products')}</b>`;
@@ -124,6 +136,7 @@ async function viewCategoryProducts(chatId: number, categoryId: string, messageI
   if (messageId) await editMessage(chatId, messageId, text, kb);
   else await sendMessage(chatId, text, { reply_markup: kb });
 }
+
 
 async function viewProduct(chatId: number, productId: string) {
   const { data: p } = await db().from('products').select('*, categories(name, icon_emoji)').eq('id', productId).maybeSingle();
