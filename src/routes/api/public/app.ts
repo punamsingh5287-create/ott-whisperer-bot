@@ -308,9 +308,69 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
   function escape(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
   document.getElementById('q').addEventListener('input', e=>{ query=e.target.value.toLowerCase(); render(); });
+
+  // Modal
+  const modal=document.getElementById('modal');
+  const mc=document.getElementById('modalContent');
+  function openModal(html){ mc.innerHTML=html; modal.classList.remove('hidden'); haptic('light'); }
+  function closeModal(){ modal.classList.add('hidden'); }
+  modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
+
+  const LANGS=[{code:'en',name:'English',flag:'🇬🇧'},{code:'ru',name:'Русский',flag:'🇷🇺'},{code:'zh',name:'中文',flag:'🇨🇳'},{code:'pl',name:'Polski',flag:'🇵🇱'},{code:'vi',name:'Tiếng Việt',flag:'🇻🇳'}];
+  const NETLABEL={trc20:'USDT · TRC20 (Tron)',bep20:'USDT · BEP20 (BNB)',solana:'SOL · Solana'};
+  let ME=null;
+
+  async function loadMe(){
+    if(!u) return null;
+    if(ME) return ME;
+    try{ const r=await fetch('/api/public/me?tg_id='+u.id); if(r.ok){ ME=await r.json(); } }catch{}
+    return ME;
+  }
+
+  async function openWallet(tab){
+    const data = await loadMe();
+    if(!data){ openModal('<h3>Wallet <span class="close-x" onclick="document.getElementById(\\'modal\\').classList.add(\\'hidden\\')">✕</span></h3><div class="empty">Open this app from inside Telegram to use your wallet.</div>'); return; }
+    tab = tab || 'wallet';
+    const bal = Number(data.user.balance||0).toFixed(2);
+    const spent = Number(data.user.total_spent||0).toFixed(2);
+    const tabs = \`<div class="tab-row">
+      <button class="\${tab==='wallet'?'active':''}" data-tab="wallet">💰 Wallet</button>
+      <button class="\${tab==='orders'?'active':''}" data-tab="orders">🧾 Orders</button>
+      <button class="\${tab==='lang'?'active':''}" data-tab="lang">🌐 Language</button>
+    </div>\`;
+    let body='';
+    if(tab==='wallet'){
+      const wallets=(data.wallets||[]).map(w=>\`<div class="wallet-row"><div class="net">\${NETLABEL[w.network]||w.network}\${w.label?' · '+escape(w.label):''}</div><div class="addr">\${escape(w.address)}</div></div>\`).join('') || '<div class="empty">No wallets configured</div>';
+      body = \`<div class="balance-card"><div class="lbl">Balance</div><div class="amt">$\${bal}</div><div class="lbl" style="margin-top:8px">Total spent: $\${spent}</div></div>
+        <div style="font-family:Sora;font-weight:700;margin:8px 4px">Deposit USDT / SOL</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Send to any address below, then tap "I have deposited" in the bot chat with your tx hash.</div>
+        \${wallets}\`;
+    } else if(tab==='orders'){
+      const orders=(data.orders||[]);
+      body = orders.length ? orders.map(o=>\`<div class="order-row"><div><div style="font-weight:600">\${escape(o.products?.name||'Order')}</div><div style="font-size:11px;color:var(--muted)">\${new Date(o.created_at).toLocaleDateString()}</div></div><div style="text-align:right"><div class="price" style="font-size:14px">$\${Number(o.amount).toFixed(2)}</div><span class="st \${o.status}">\${o.status}</span></div></div>\`).join('') : '<div class="empty">No orders yet</div>';
+    } else if(tab==='lang'){
+      const cur = data.user.language||'en';
+      body = LANGS.map(L=>\`<div class="lang-opt \${L.code===cur?'active':''}" data-lang="\${L.code}"><span class="flag">\${L.flag}</span><span>\${L.name}</span>\${L.code===cur?'<span class="check">✓</span>':''}</div>\`).join('');
+    }
+    openModal(\`<h3>Account <span class="close-x" data-close>✕</span></h3>\${tabs}\${body}\`);
+    mc.querySelector('[data-close]')?.addEventListener('click',closeModal);
+    mc.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{ haptic('light'); openWallet(b.dataset.tab); }));
+    mc.querySelectorAll('[data-lang]').forEach(b=>b.addEventListener('click',async ()=>{
+      const code=b.dataset.lang; haptic('medium');
+      try{ await fetch('/api/public/me',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tg_id:u.id,language:code})}); ME.user.language=code; openWallet('lang'); }catch{}
+    }));
+  }
+
+  document.getElementById('bell').addEventListener('click',()=>openWallet('wallet'));
+
   document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>{
     document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
     n.classList.add('active'); haptic('light');
+    const k=n.dataset.nav;
+    if(k==='orders') openWallet('orders');
+    else if(k==='me') openWallet('wallet');
+    else if(k==='cats') { closeModal(); window.scrollTo({top:document.getElementById('cats').offsetTop-20,behavior:'smooth'}); }
+    else closeModal();
   }));
 
   fetch('/api/public/storefront').then(r=>r.json()).then(d=>{
