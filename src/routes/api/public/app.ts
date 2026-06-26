@@ -137,7 +137,7 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 
 .empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:13px}
 .sheet{display:none}
-.modal{position:fixed;inset:0;background:rgba(2,1,12,.7);backdrop-filter:blur(14px);z-index:60;display:grid;place-items:flex-end;animation:fadeIn .25s ease}
+.modal{position:fixed;inset:0;background:rgba(2,1,12,.7);backdrop-filter:blur(10px);z-index:60;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .2s ease}
 .modal.hidden{display:none}
 .modal-card{width:100%;max-width:520px;margin:0 auto;padding:18px;border-radius:24px 24px 0 0;max-height:82vh;overflow-y:auto;animation:slideUp .35s cubic-bezier(.2,.8,.2,1)}
 .modal-card h3{font-family:Sora;font-size:18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
