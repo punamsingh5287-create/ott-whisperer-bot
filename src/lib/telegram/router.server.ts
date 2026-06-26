@@ -1,9 +1,10 @@
 import { db } from './db.server';
 import {
-  sendMessage, sendPhoto, editMessage, answerCallback, getMe, getFile, downloadFile,
+  sendMessage, answerCallback, getMe, getFile, downloadFile,
   type InlineKeyboard,
 } from './gateway.server';
 import { renderEmoji, escapeHtml, e, mkBtn } from './emoji';
+import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavState, type RenderedView } from './navigation.server';
 
 type TgUser = { id: number; username?: string; first_name?: string };
 type Network = 'USDT_TRC20' | 'USDT_BEP20' | 'SOL';
@@ -56,34 +57,32 @@ async function getSettings() {
 
 /* ─── menus ───────────────────────────────────────────────────── */
 async function mainMenu(): Promise<InlineKeyboard> {
-  const [cats, search, orders, profile, ref, support, home] = await Promise.all([
+  const [cats, search, orders, profile, ref, support, close] = await Promise.all([
     mkBtn('menu_categories', '🗂', 'Categories', { callback_data: 'menu:cats' }),
     mkBtn('menu_search', '🔎', 'Search', { callback_data: 'menu:search' }),
     mkBtn('menu_orders', '🧾', 'My Orders', { callback_data: 'menu:orders' }),
     mkBtn('menu_profile', '👤', 'Profile', { callback_data: 'menu:profile' }),
     mkBtn('menu_referrals', '🎁', 'Referrals', { callback_data: 'menu:ref' }),
     mkBtn('menu_support', '💬', 'Support', { callback_data: 'menu:support' }),
-    mkBtn('menu_home', '🏠', 'Home', { callback_data: 'menu:home' }),
+    mkBtn('menu_close', '✕', 'Close', { callback_data: 'nav:close' }),
   ]);
-  return { inline_keyboard: [[cats, search], [orders, profile], [ref, support], [home]] };
+  return { inline_keyboard: [[cats, search], [orders, profile], [ref, support], [close]] };
+}
+
+async function navRow(includeHome = true): Promise<InlineKeyboard['inline_keyboard'][number]> {
+  const buttons = [await mkBtn('menu_back', '‹', 'Back', { callback_data: 'nav:back' })];
+  if (includeHome) buttons.push(await mkBtn('menu_home', '🏠', 'Home', { callback_data: 'menu:home' }));
+  buttons.push(await mkBtn('menu_close', '✕', 'Close', { callback_data: 'nav:close' }));
+  return buttons;
 }
 
 async function backMenu(): Promise<InlineKeyboard> {
-  const back = await mkBtn('menu_back', '«', 'Back to menu', { callback_data: 'menu:home' });
-  return { inline_keyboard: [[back]] };
+  return { inline_keyboard: [await navRow()] };
 }
 
 
 /* ─── views ───────────────────────────────────────────────────── */
-async function sendOrEdit(chatId: number, messageId: number | undefined, text: string, kb: InlineKeyboard) {
-  if (messageId) {
-    const edited = await editMessage(chatId, messageId, text, kb);
-    if (edited?.ok) return;
-  }
-  await sendMessage(chatId, text, { reply_markup: kb });
-}
-
-async function viewHome(chatId: number, name?: string) {
+async function renderHome(name?: string): Promise<RenderedView> {
   const s = await getSettings();
   const welcome = await e('welcome', '✨');
   const greet = name ? `, <b>${escapeHtml(name)}</b>` : '';
@@ -91,17 +90,16 @@ async function viewHome(chatId: number, name?: string) {
     `${welcome}  <b>${escapeHtml(s.site_name || s.bot_name || 'OTT & AI Store')}</b>\n\n` +
     `Hey${greet}! ${escapeHtml(s.welcome_text || '')}\n\n` +
     `Browse premium <b>OTT</b>, <b>AI</b>, <b>Gaming</b> & <b>Utility</b> subscriptions. Instant delivery, crypto-friendly checkout.`;
-  await sendMessage(chatId, text, { reply_markup: await mainMenu() });
+  return { text, reply_markup: await mainMenu() };
 }
 
 // Inline keyboard buttons don't support icon_custom_emoji_id — use fallback emoji in the label.
 
 
-async function viewCategories(chatId: number, messageId?: number) {
+async function renderCategories(): Promise<RenderedView> {
   const { data } = await db().from('categories')
     .select('id, name, icon_emoji').eq('is_active', true).order('sort_order');
   const cats = data ?? [];
-  const back = await mkBtn('menu_back', '«', 'Back', { callback_data: 'menu:home' });
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...cats.map((c: any) => {
@@ -109,14 +107,14 @@ async function viewCategories(chatId: number, messageId?: number) {
         return [{ text, callback_data: `cat:${c.id}` }];
       }),
 
-      [back],
+      await navRow(),
     ],
   };
   const text = `${await e('menu_categories', '🗂')}  <b>Categories</b>\n\nChoose a category to browse:`;
-  await sendOrEdit(chatId, messageId, text, kb);
+  return { text, reply_markup: kb };
 }
 
-async function viewCategoryProducts(chatId: number, categoryId: string, messageId?: number) {
+async function renderCategoryProducts(categoryId: string): Promise<RenderedView> {
   const supabase = db();
   const [{ data: cat }, { data: prods }] = await Promise.all([
     supabase.from('categories').select('name, icon_emoji').eq('id', categoryId).maybeSingle(),
@@ -124,7 +122,6 @@ async function viewCategoryProducts(chatId: number, categoryId: string, messageI
       .eq('category_id', categoryId).eq('status', 'active').order('sort_order').limit(50),
   ]);
   const items = prods ?? [];
-  const back = await mkBtn('menu_back', '«', 'Back', { callback_data: 'menu:cats' });
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...items.map((p: any) => {
@@ -133,44 +130,41 @@ async function viewCategoryProducts(chatId: number, categoryId: string, messageI
         return [{ text, callback_data: `prod:${p.id}` }];
       }),
 
-      [back],
+      await navRow(),
     ],
   };
   const header = `${cat?.icon_emoji || '📦'} <b>${escapeHtml(cat?.name || 'Products')}</b>`;
   const text = items.length ? `${header}\n\nTap a product for details:` : `${header}\n\nNo products available yet.`;
-  await sendOrEdit(chatId, messageId, text, kb);
+  return { text, reply_markup: kb };
 }
 
 
-async function viewProduct(chatId: number, productId: string) {
+async function renderProduct(productId: string): Promise<RenderedView> {
   const { data: p } = await db().from('products').select('*, categories(name, icon_emoji)').eq('id', productId).maybeSingle();
-  if (!p) { await sendMessage(chatId, `${await e('status_error', '⚠️')} Product not found.`, { reply_markup: await backMenu() }); return; }
+  if (!p) return { text: `${await e('status_error', '⚠️')} Product not found.`, reply_markup: await backMenu() };
   const emoji = renderEmoji(p.premium_emoji_id, p.fallback_emoji);
   const stockLine = p.stock > 0 ? `✅ In stock (${p.stock})` : `⛔ Out of stock`;
   const tagLine = (p.tags?.length) ? `\n🏷 ${p.tags.map((t: string) => `<code>${escapeHtml(t)}</code>`).join(' ')}` : '';
-  const caption =
+  const imageLine = p.image_url ? `\n🖼 <a href="${escapeHtml(p.image_url)}">View product image</a>` : '';
+  const text =
     `${emoji}  <b>${escapeHtml(p.name)}</b>\n\n` +
     `${escapeHtml(p.description || '')}\n\n` +
-    `💰 <b>$${p.price}</b>\n⏳ ${p.duration_days} days\n${stockLine}${tagLine}`;
+    `💰 <b>$${p.price}</b>\n⏳ ${p.duration_days} days\n${stockLine}${tagLine}${imageLine}`;
   const buy = await mkBtn('action_buy', '🛒', `Buy now — $${p.price}`, { callback_data: `buy:${p.id}` });
-  const back = await mkBtn('menu_back', '«', 'Back', { callback_data: p.category_id ? `cat:${p.category_id}` : 'menu:cats' });
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...(p.stock > 0 ? [[buy]] : []),
-      [back],
+      await navRow(),
     ],
   };
-
-  if (p.image_url) await sendPhoto(chatId, p.image_url, caption, kb);
-  else await sendMessage(chatId, caption, { reply_markup: kb });
+  return { text, reply_markup: kb };
 }
 
 /* ─── crypto checkout ─────────────────────────────────────────── */
-async function viewBuyNetworks(chatId: number, productId: string) {
+async function renderBuyNetworks(productId: string): Promise<RenderedView> {
   const { data: p } = await db().from('products').select('name, price, stock, status').eq('id', productId).maybeSingle();
   if (!p || p.status !== 'active' || p.stock <= 0) {
-    await sendMessage(chatId, `${await e('status_error', '⚠️')} This product is unavailable.`, { reply_markup: await backMenu() });
-    return;
+    return { text: `${await e('status_error', '⚠️')} This product is unavailable.`, reply_markup: await backMenu() };
   }
   const { data: wallets } = await db().from('wallets').select('id, network').eq('is_active', true);
   const have = new Set((wallets ?? []).map((w: any) => w.network));
@@ -180,23 +174,21 @@ async function viewBuyNetworks(chatId: number, productId: string) {
     rows.push([await mkBtn(NETWORK_KEY[net], '💠', `Pay with ${NETWORK_LABEL[net]}`, { callback_data: `pay:${net}:${productId}` })]);
   }
   if (rows.length === 0) {
-    await sendMessage(chatId, `${await e('status_error', '⚠️')} No payment networks configured. Contact support.`, { reply_markup: await backMenu() });
-    return;
+    return { text: `${await e('status_error', '⚠️')} No payment networks configured. Contact support.`, reply_markup: await backMenu() };
   }
-  rows.push([await mkBtn('menu_back', '«', 'Cancel', { callback_data: `prod:${productId}` })]);
+  rows.push(await navRow());
 
-  await sendMessage(chatId,
-    `💳 <b>Choose a payment network</b>\n\n` +
+  return { text: `💳 <b>Choose a payment network</b>\n\n` +
     `<b>${escapeHtml(p.name)}</b>\nAmount: <b>$${p.price}</b>\n\n` +
     `Pick the crypto network you'd like to pay with. After paying, send your transaction hash or screenshot here for verification.`,
-    { reply_markup: { inline_keyboard: rows } });
+    reply_markup: { inline_keyboard: rows } };
 }
 
-async function startPayment(chatId: number, botUserId: string, productId: string, network: Network, cbId: string) {
+async function renderPayment(productId: string, network: Network, botUserId: string, cbId?: string): Promise<RenderedView> {
   const supabase = db();
   const { data: wallet } = await supabase.from('wallets')
     .select('id, address, qr_url, label').eq('network', network).eq('is_active', true).limit(1).maybeSingle();
-  if (!wallet) { await answerCallback(cbId, 'No wallet configured for this network.', true); return; }
+  if (!wallet) return { text: `${await e('status_error', '⚠️')} No wallet configured for this network.`, reply_markup: await backMenu() };
 
   const { data, error } = await supabase.rpc('create_pending_order', {
     _product_id: productId, _bot_user_id: botUserId, _network: network, _wallet_id: wallet.id,
@@ -207,36 +199,34 @@ async function startPayment(chatId: number, botUserId: string, productId: string
       : row?.error === 'inactive' ? 'Product unavailable'
       : row?.error === 'wallet_unavailable' ? 'Wallet not available'
       : 'Could not start payment';
-    await answerCallback(cbId, msg, true); return;
+    if (cbId) await answerCallback(cbId, msg, true);
+    return { text: `${await e('status_error', '⚠️')} ${escapeHtml(msg)}`, reply_markup: await backMenu() };
   }
-  await answerCallback(cbId, '✅ Order created');
-  await supabase.from('bot_users').update({
-    pending_action: { type: 'payment_proof', payment_id: row.payment_id, order_id: row.order_id },
-  }).eq('id', botUserId);
+  if (cbId) await answerCallback(cbId, '✅ Order created');
+  await setFlowAction(botUserId, { type: 'payment_proof', payment_id: row.payment_id, order_id: row.order_id });
 
   const pending = await e('status_pending', '⏳');
-  const caption =
+  const qrLine = wallet.qr_url ? `\nQR: ${escapeHtml(wallet.qr_url)}\n` : '\n';
+  const text =
     `${pending}  <b>Payment Instructions</b>\n\n` +
     `Product: <b>${escapeHtml(row.product_name)}</b>\n` +
     `Order: <code>${String(row.order_id).slice(0, 8)}</code>\n` +
     `Network: <b>${NETWORK_LABEL[network]}</b>\n` +
     `Amount: <b>$${row.amount}</b>\n\n` +
-    `Send the <b>exact amount</b> to:\n<code>${escapeHtml(wallet.address)}</code>\n\n` +
+    `Send the <b>exact amount</b> to:\n<code>${escapeHtml(wallet.address)}</code>${qrLine}\n` +
     `Then reply here with your <b>transaction hash</b> or <b>screenshot</b> of the payment. ` +
     `Tap "I have paid" once submitted.`;
   const kb: InlineKeyboard = {
     inline_keyboard: [
       [await mkBtn('action_paid', '✅', 'I have paid', { callback_data: `paid:${row.payment_id}` })],
-      [await mkBtn('menu_back', '«', 'Cancel', { callback_data: 'menu:home' })],
+      await navRow(),
     ],
   };
-
-  if (wallet.qr_url) await sendPhoto(chatId, wallet.qr_url, caption, kb);
-  else await sendMessage(chatId, caption, { reply_markup: kb });
+  return { text, reply_markup: kb };
 }
 
 /* ─── orders / profile / referrals / support / search ────────── */
-async function viewOrders(chatId: number, botUserId: string) {
+async function renderOrders(botUserId: string): Promise<RenderedView> {
   const { data } = await db().from('orders')
     .select('id, amount, status, created_at, products(name, fallback_emoji), payments(network, status)')
     .eq('bot_user_id', botUserId).order('created_at', { ascending: false }).limit(10);
@@ -249,26 +239,25 @@ async function viewOrders(chatId: number, botUserId: string) {
         return `${o.products?.fallback_emoji || '🧾'} <b>${escapeHtml(o.products?.name || 'Product')}</b> — $${o.amount} · ${o.status}${payLine} · ${d}`;
       }).join('\n')
     : 'You have no orders yet.';
-  await sendMessage(chatId, `${await e('menu_orders', '🧾')} <b>Your orders</b>\n\n${lines}`, { reply_markup: await backMenu() });
+  return { text: `${await e('menu_orders', '🧾')} <b>Your orders</b>\n\n${lines}`, reply_markup: await backMenu() };
 }
 
-async function viewProfile(chatId: number, botUserId: string) {
+async function renderProfile(botUserId: string): Promise<RenderedView> {
   const { data: u } = await db().from('bot_users')
     .select('first_name, username, joined_at, total_spent, is_subscribed, referral_code').eq('id', botUserId).maybeSingle();
-  if (!u) return;
+  if (!u) return { text: `${await e('status_error', '⚠️')} Profile not found.`, reply_markup: await backMenu() };
   const sub = await e('subscription', '⭐');
-  await sendMessage(chatId,
-    `${await e('menu_profile', '👤')} <b>Your Profile</b>\n\n` +
+  return { text: `${await e('menu_profile', '👤')} <b>Your Profile</b>\n\n` +
     `Name: ${escapeHtml(u.first_name || '—')}\n` +
     `Username: @${escapeHtml(u.username || '—')}\n` +
     `Joined: ${new Date(u.joined_at).toLocaleDateString()}\n` +
     `Total spent: $${u.total_spent}\n` +
     `Status: ${u.is_subscribed ? `${sub} Active` : '⚪ Free'}\n` +
     `Referral code: <code>${u.referral_code}</code>`,
-    { reply_markup: await backMenu() });
+    reply_markup: await backMenu() };
 }
 
-async function viewReferrals(chatId: number, botUserId: string) {
+async function renderReferrals(botUserId: string): Promise<RenderedView> {
   const supabase = db();
   const [{ data: u }, { count }, settings] = await Promise.all([
     supabase.from('bot_users').select('referral_code').eq('id', botUserId).maybeSingle(),
@@ -279,34 +268,31 @@ async function viewReferrals(chatId: number, botUserId: string) {
   const link = username
     ? `https://t.me/${username.replace(/^@/, '')}?start=${u?.referral_code}`
     : `Share your code: ${u?.referral_code}`;
-  await sendMessage(chatId,
-    `${await e('menu_referrals', '🎁')} <b>Referrals</b>\n\nInvite friends and earn rewards on every paid order.\n\n` +
+  return { text: `${await e('menu_referrals', '🎁')} <b>Referrals</b>\n\nInvite friends and earn rewards on every paid order.\n\n` +
     `Your code: <code>${u?.referral_code}</code>\nInvited: <b>${count ?? 0}</b>\n\n` +
     (username ? `Share link:\n${link}` : `<i>${link}</i>`),
-    { reply_markup: await backMenu() });
+    reply_markup: await backMenu() };
 }
 
-async function viewSupport(chatId: number, botUserId: string) {
-  await db().from('bot_users').update({ pending_action: { type: 'support_message' } }).eq('id', botUserId);
+async function renderSupport(botUserId: string): Promise<RenderedView> {
+  await setFlowAction(botUserId, { type: 'support_message' });
   const s = await getSettings();
-  await sendMessage(chatId,
-    `${await e('menu_support', '💬')} <b>Support</b>\n\nSend your message in the next reply and our team will respond. You can also reach us at ${escapeHtml(s.support_handle || '@support')}.`,
-    { reply_markup: await backMenu() });
+  return { text: `${await e('menu_support', '💬')} <b>Support</b>\n\nSend your message in the next reply and our team will respond. You can also reach us at ${escapeHtml(s.support_handle || '@support')}.`,
+    reply_markup: await backMenu() };
 }
 
-async function viewSearchPrompt(chatId: number, botUserId: string) {
-  await db().from('bot_users').update({ pending_action: { type: 'search' } }).eq('id', botUserId);
-  await sendMessage(chatId, `${await e('menu_search', '🔎')} <b>Search</b>\n\nSend a keyword (e.g. <i>netflix</i>, <i>chatgpt</i>).`,
-    { reply_markup: await backMenu() });
+async function renderSearchPrompt(botUserId: string): Promise<RenderedView> {
+  await setFlowAction(botUserId, { type: 'search' });
+  return { text: `${await e('menu_search', '🔎')} <b>Search</b>\n\nSend a keyword (e.g. <i>netflix</i>, <i>chatgpt</i>).`,
+    reply_markup: await backMenu() };
 }
 
-async function runSearch(chatId: number, query: string) {
+async function renderSearchResults(query: string): Promise<RenderedView> {
   const q = `%${query.replace(/[%_]/g, '')}%`;
   const { data } = await db().from('products')
     .select('id, name, price, fallback_emoji, premium_emoji_id, stock')
     .or(`name.ilike.${q},description.ilike.${q}`).eq('status', 'active').limit(20);
   const items = data ?? [];
-  const back = await mkBtn('menu_back', '«', 'Menu', { callback_data: 'menu:home' });
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...items.map((p: any) => {
@@ -315,13 +301,70 @@ async function runSearch(chatId: number, query: string) {
         return [{ text, callback_data: `prod:${p.id}` }];
       }),
 
-      [back],
+      await navRow(),
     ],
   };
-  await sendMessage(chatId,
-    items.length ? `${await e('menu_search', '🔎')} Results for "<b>${escapeHtml(query)}</b>":`
+  return { text: items.length ? `${await e('menu_search', '🔎')} Results for "<b>${escapeHtml(query)}</b>":`
       : `${await e('status_error', '⚠️')} No matches for "<b>${escapeHtml(query)}</b>".`,
-    { reply_markup: kb });
+    reply_markup: kb };
+}
+
+async function renderView(state: NavState, botUserId: string, name?: string): Promise<RenderedView> {
+  if (!['support', 'search', 'payment', 'proof'].includes(state.screen)) {
+    await setFlowAction(botUserId, null);
+  }
+
+  switch (state.screen) {
+    case 'home': return renderHome(name);
+    case 'categories': return renderCategories();
+    case 'category': return renderCategoryProducts(state.params?.categoryId ?? '');
+    case 'product': return renderProduct(state.params?.productId ?? '');
+    case 'buy': return renderBuyNetworks(state.params?.productId ?? '');
+    case 'payment': return renderPayment(state.params?.productId ?? '', state.params?.network as Network, botUserId);
+    case 'proof': return {
+      text: `${await e('status_pending', '⏳')} <b>Payment proof</b>\n\nPlease reply with your <b>transaction hash</b> or send a <b>screenshot</b> of the payment.`,
+      reply_markup: await backMenu(),
+    };
+    case 'payment_review': return {
+      text: `${await e('status_pending', '⏳')} <b>Payment under review</b>\n\nWe received your proof. An admin will verify shortly and update your order.`,
+      reply_markup: await backMenu(),
+    };
+    case 'orders': return renderOrders(botUserId);
+    case 'profile': return renderProfile(botUserId);
+    case 'referrals': return renderReferrals(botUserId);
+    case 'support': return renderSupport(botUserId);
+    case 'support_received': return {
+      text: `${await e('status_success', '✅')} <b>Message received</b>\n\nOur team will reply here soon.`,
+      reply_markup: await backMenu(),
+    };
+    case 'search': return renderSearchPrompt(botUserId);
+    case 'search_results': return renderSearchResults(state.params?.query ?? '');
+    default: return renderHome(name);
+  }
+}
+
+async function navigateTo(args: {
+  botUserId: string;
+  chatId: number;
+  messageId?: number;
+  callbackMessage?: any;
+  state: NavState;
+  name?: string;
+  reset?: boolean;
+  replace?: boolean;
+  allowNewMessage?: boolean;
+}) {
+  return showView({
+    botUserId: args.botUserId,
+    chatId: args.chatId,
+    messageId: args.messageId,
+    callbackMessage: args.callbackMessage,
+    state: args.state,
+    reset: args.reset,
+    replace: args.replace,
+    allowNewMessage: args.allowNewMessage,
+    renderView: (state) => renderView(state, args.botUserId, args.name),
+  });
 }
 
 
@@ -338,8 +381,11 @@ async function captureSupportMessage(chatId: number, botUserId: string, body: st
     await supabase.from('support_tickets').update({ last_message: body, updated_at: new Date().toISOString() }).eq('id', ticketId);
   }
   await supabase.from('support_messages').insert({ ticket_id: ticketId, from_admin: false, body });
-  await supabase.from('bot_users').update({ pending_action: null }).eq('id', botUserId);
-  await sendMessage(chatId, `${await e('status_success', '✅')} Got it — our team will reply here.`, { reply_markup: await backMenu() });
+  await setFlowAction(botUserId, null);
+  const edited = await navigateTo({ botUserId, chatId, state: { screen: 'support_received' }, replace: true });
+  if (!edited) {
+    await sendMessage(chatId, `${await e('status_success', '✅')} Got it — our team will reply here.`, { reply_markup: await backMenu() });
+  }
 }
 
 /* ─── payment proof capture (text or photo) ───────────────────── */
@@ -368,10 +414,13 @@ async function capturePaymentProof(
     _tx_hash: opts.text ?? null,
     _screenshot_url: screenshotUrl,
   });
-  await supabase.from('bot_users').update({ pending_action: null }).eq('id', botUserId);
-  await sendMessage(chatId,
-    `${await e('status_pending', '⏳')} <b>Payment under review</b>\n\nWe received your proof. An admin will verify shortly and update your order.`,
-    { reply_markup: await backMenu() });
+  await setFlowAction(botUserId, null);
+  const edited = await navigateTo({ botUserId, chatId, state: { screen: 'payment_review' }, replace: true });
+  if (!edited) {
+    await sendMessage(chatId,
+      `${await e('status_pending', '⏳')} <b>Payment under review</b>\n\nWe received your proof. An admin will verify shortly and update your order.`,
+      { reply_markup: await backMenu() });
+  }
 }
 
 /* ─── entry points ────────────────────────────────────────────── */
@@ -382,8 +431,7 @@ export async function handleMessage(message: any) {
   const startPayload = text.startsWith('/start') ? text.split(' ')[1] : undefined;
   const botUserId = await upsertBotUser(message.from, startPayload);
 
-  const { data: u } = await db().from('bot_users').select('pending_action').eq('id', botUserId).maybeSingle();
-  const pending = u?.pending_action as { type?: string; payment_id?: string } | null;
+  const pending = await getFlowAction<{ type?: string; payment_id?: string }>(botUserId);
 
   // Photo upload → if user is in payment_proof mode, treat as proof
   if (message.photo?.length && pending?.type === 'payment_proof' && pending.payment_id) {
@@ -394,8 +442,8 @@ export async function handleMessage(message: any) {
 
   if (pending?.type && !text.startsWith('/')) {
     if (pending.type === 'search') {
-      await db().from('bot_users').update({ pending_action: null }).eq('id', botUserId);
-      await runSearch(chatId, text); return;
+      await setFlowAction(botUserId, null);
+      await navigateTo({ botUserId, chatId, state: { screen: 'search_results', params: { query: text } }, replace: true }); return;
     }
     if (pending.type === 'support_message') { await captureSupportMessage(chatId, botUserId, text); return; }
     if (pending.type === 'payment_proof' && pending.payment_id && text) {
@@ -403,18 +451,19 @@ export async function handleMessage(message: any) {
     }
   }
 
-  if (text.startsWith('/start') || text.startsWith('/menu')) { await viewHome(chatId, message.from.first_name); return; }
-  if (text.startsWith('/categories')) { await viewCategories(chatId); return; }
-  if (text.startsWith('/orders')) { await viewOrders(chatId, botUserId); return; }
-  if (text.startsWith('/profile')) { await viewProfile(chatId, botUserId); return; }
-  if (text.startsWith('/referrals')) { await viewReferrals(chatId, botUserId); return; }
-  if (text.startsWith('/support')) { await viewSupport(chatId, botUserId); return; }
+  if (text.startsWith('/start') || text.startsWith('/menu')) { await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, allowNewMessage: true }); return; }
+  if (text.startsWith('/categories')) { await navigateTo({ botUserId, chatId, state: { screen: 'categories' }, allowNewMessage: true }); return; }
+  if (text.startsWith('/orders')) { await navigateTo({ botUserId, chatId, state: { screen: 'orders' }, allowNewMessage: true }); return; }
+  if (text.startsWith('/profile')) { await navigateTo({ botUserId, chatId, state: { screen: 'profile' }, allowNewMessage: true }); return; }
+  if (text.startsWith('/referrals')) { await navigateTo({ botUserId, chatId, state: { screen: 'referrals' }, allowNewMessage: true }); return; }
+  if (text.startsWith('/support')) { await navigateTo({ botUserId, chatId, state: { screen: 'support' }, allowNewMessage: true }); return; }
   if (text.startsWith('/search')) {
     const q = text.slice(7).trim();
-    if (q) await runSearch(chatId, q); else await viewSearchPrompt(chatId, botUserId);
+    if (q) await navigateTo({ botUserId, chatId, state: { screen: 'search_results', params: { query: q } }, allowNewMessage: true });
+    else await navigateTo({ botUserId, chatId, state: { screen: 'search' }, allowNewMessage: true });
     return;
   }
-  await viewHome(chatId, message.from.first_name);
+  await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, allowNewMessage: true });
 }
 
 export async function handleCallback(cb: any) {
@@ -424,25 +473,40 @@ export async function handleCallback(cb: any) {
   const data: string = cb.data ?? '';
   const botUserId = await upsertBotUser(cb.from);
 
-  if (data === 'menu:home') { await answerCallback(cb.id); await viewHome(chatId, cb.from.first_name); return; }
-  if (data === 'menu:cats') { await answerCallback(cb.id); await viewCategories(chatId, messageId); return; }
-  if (data === 'menu:search') { await answerCallback(cb.id); await viewSearchPrompt(chatId, botUserId); return; }
-  if (data === 'menu:orders') { await answerCallback(cb.id); await viewOrders(chatId, botUserId); return; }
-  if (data === 'menu:profile') { await answerCallback(cb.id); await viewProfile(chatId, botUserId); return; }
-  if (data === 'menu:ref') { await answerCallback(cb.id); await viewReferrals(chatId, botUserId); return; }
-  if (data === 'menu:support') { await answerCallback(cb.id); await viewSupport(chatId, botUserId); return; }
+  if (data === 'nav:close') { await answerCallback(cb.id); await closeView(botUserId, chatId, messageId); return; }
+  if (data === 'nav:back') {
+    await answerCallback(cb.id);
+    await goBack({
+      botUserId,
+      chatId,
+      messageId,
+      callbackMessage: cb.message,
+      fallback: { screen: 'home' },
+      renderView: (state) => renderView(state, botUserId, cb.from.first_name),
+    });
+    return;
+  }
+  if (data === 'menu:home') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'home' }, name: cb.from.first_name, reset: true }); return; }
+  if (data === 'menu:cats') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'categories' } }); return; }
+  if (data === 'menu:search') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'search' } }); return; }
+  if (data === 'menu:orders') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'orders' } }); return; }
+  if (data === 'menu:profile') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'profile' } }); return; }
+  if (data === 'menu:ref') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'referrals' } }); return; }
+  if (data === 'menu:support') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'support' } }); return; }
 
-  if (data.startsWith('cat:')) { await answerCallback(cb.id); await viewCategoryProducts(chatId, data.slice(4), messageId); return; }
-  if (data.startsWith('prod:')) { await answerCallback(cb.id); await viewProduct(chatId, data.slice(5)); return; }
-  if (data.startsWith('buy:')) { await answerCallback(cb.id); await viewBuyNetworks(chatId, data.slice(4)); return; }
+  if (data.startsWith('cat:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'category', params: { categoryId: data.slice(4) } } }); return; }
+  if (data.startsWith('prod:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'product', params: { productId: data.slice(5) } } }); return; }
+  if (data.startsWith('buy:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'buy', params: { productId: data.slice(4) } } }); return; }
   if (data.startsWith('pay:')) {
     const [, net, prodId] = data.split(':');
-    await startPayment(chatId, botUserId, prodId, net as Network, cb.id);
+    await answerCallback(cb.id);
+    await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'payment', params: { productId: prodId, network: net } } });
     return;
   }
   if (data.startsWith('paid:')) {
     await answerCallback(cb.id, 'Send your tx hash or screenshot now.');
-    await sendMessage(chatId, `${await e('status_pending', '⏳')} Please reply with your <b>transaction hash</b> or send a <b>screenshot</b> of the payment.`);
+    await setFlowAction(botUserId, { type: 'payment_proof', payment_id: data.slice(5) });
+    await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'proof', params: { paymentId: data.slice(5) } }, replace: true });
     return;
   }
   await answerCallback(cb.id);
