@@ -240,14 +240,32 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
   if(tg){ try{ tg.ready(); tg.expand(); tg.setHeaderColor('#05010f'); tg.setBackgroundColor('#05010f'); }catch(e){} }
   const haptic = (t='light') => { try{ tg && tg.HapticFeedback && tg.HapticFeedback.impactOccurred(t); }catch(e){} };
 
-  // Particles
+  // Particles — mobile-friendly: low count, no per-frame shadowBlur, ~30fps cap
   const canvas = document.getElementById('particles');
   const ctx = canvas.getContext('2d');
-  let W, H, parts;
-  function size(){ const d=Math.min(devicePixelRatio||1,2); W=canvas.clientWidth=innerWidth; H=canvas.clientHeight=innerHeight; canvas.width=W*d; canvas.height=H*d; ctx.setTransform(d,0,0,d,0,0); }
-  function init(){ parts=Array.from({length:38},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.6+.4,vx:(Math.random()-.5)*.25,vy:-Math.random()*.35-.05,a:Math.random()*.6+.2,hue:Math.random()<.5?'#7c3aed':'#06b6d4'})); }
-  function tick(){ ctx.clearRect(0,0,W,H); for(const p of parts){ p.x+=p.vx; p.y+=p.vy; if(p.y<-10){p.y=H+10;p.x=Math.random()*W} ctx.beginPath(); ctx.fillStyle=p.hue; ctx.globalAlpha=p.a; ctx.shadowColor=p.hue; ctx.shadowBlur=14; ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill(); } ctx.globalAlpha=1; ctx.shadowBlur=0; requestAnimationFrame(tick); }
-  size(); init(); tick(); addEventListener('resize',()=>{size();init();});
+  let W, H, parts, running = true, last = 0;
+  const isMobile = matchMedia('(max-width: 640px)').matches;
+  const COUNT = isMobile ? 18 : 36;
+  const FRAME_MS = 1000 / 30;
+  function size(){ const d=Math.min(devicePixelRatio||1,1.5); W=canvas.clientWidth=innerWidth; H=canvas.clientHeight=innerHeight; canvas.width=W*d; canvas.height=H*d; ctx.setTransform(d,0,0,d,0,0); }
+  function init(){ parts=Array.from({length:COUNT},()=>({x:Math.random()*W,y:Math.random()*H,r:Math.random()*1.4+.6,vx:(Math.random()-.5)*.2,vy:-Math.random()*.3-.05,a:Math.random()*.5+.25,hue:Math.random()<.5?'#7c3aed':'#06b6d4'})); }
+  function tick(ts){
+    requestAnimationFrame(tick);
+    if(!running) return;
+    if(ts - last < FRAME_MS) return;
+    last = ts;
+    ctx.clearRect(0,0,W,H);
+    for(const p of parts){
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.y<-10){p.y=H+10;p.x=Math.random()*W}
+      ctx.beginPath(); ctx.fillStyle=p.hue; ctx.globalAlpha=p.a;
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+  }
+  size(); init(); requestAnimationFrame(tick);
+  addEventListener('resize',()=>{size();init();});
+  document.addEventListener('visibilitychange',()=>{ running = !document.hidden; });
 
   // Ripple
   document.addEventListener('pointerdown', e=>{
