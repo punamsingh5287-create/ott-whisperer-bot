@@ -142,7 +142,7 @@ async function renderHome(name?: string, lang: Lang = 'en'): Promise<RenderedVie
 }
 
 async function renderLanguage(lang: Lang): Promise<RenderedView> {
-  const rows = LANGS.map((L) => [{ text: `${L.flag}  ${L.name}${L.code === lang ? '  ✓' : ''}`, callback_data: `lang:${L.code}` }]);
+  const rows: InlineKeyboard['inline_keyboard'] = LANGS.map((L) => [{ text: `${L.flag}  ${L.name}${L.code === lang ? '  ✓' : ''}`, callback_data: `lang:${L.code}` }]);
   rows.push(await navRow(lang));
   return {
     text: `🌐  <b>${t(lang, 'language')}</b>\n\n${t(lang, 'choose_lang')}`,
