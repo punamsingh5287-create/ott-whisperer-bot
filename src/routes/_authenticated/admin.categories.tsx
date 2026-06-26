@@ -16,7 +16,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/admin/categories")({ component: CategoriesPage });
 
 const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-const empty = { name: "", slug: "", icon_emoji: "📦", sort_order: 0, is_active: true };
+const empty = { name: "", slug: "", icon_emoji: "📦", premium_emoji_id: "", sort_order: 0, is_active: true };
 
 function CategoriesPage() {
   const qc = useQueryClient();
@@ -58,6 +58,7 @@ function CategoriesPage() {
               <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value, slug: form.slug || slugify(e.target.value) })} /></div>
               <div><Label>Slug</Label><Input value={form.slug} onChange={(e) => setForm({ ...form, slug: slugify(e.target.value) })} /></div>
               <div><Label>Emoji</Label><Input value={form.icon_emoji} onChange={(e) => setForm({ ...form, icon_emoji: e.target.value })} /></div>
+              <div><Label>Premium emoji ID</Label><Input value={form.premium_emoji_id} onChange={(e) => setForm({ ...form, premium_emoji_id: e.target.value })} placeholder="5465366461348322437" /></div>
               <div><Label>Sort order</Label><Input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} /></div>
               <div className="flex items-center gap-2"><Switch checked={form.is_active} onCheckedChange={(c) => setForm({ ...form, is_active: c })} /><Label>Active</Label></div>
             </div>

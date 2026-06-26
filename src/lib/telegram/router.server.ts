@@ -18,17 +18,13 @@ const NETWORK_KEY: Record<Network, string> = {
   USDT_TRC20: 'pay_trc20', USDT_BEP20: 'pay_bep20', SOL: 'pay_sol',
 };
 
-function presetSlug(value?: string | null): string {
-  return String(value ?? '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-}
 
 async function categoryEmoji(c: any): Promise<string> {
-  const key = presetSlug(c.slug || c.name);
-  return e(key ? `category_${key}` : 'category_default', c.icon_emoji || '📦');
+  return premiumEmoji(c.premium_emoji_id, c.icon_emoji || '📦');
+}
+
+async function categoryBtn(c: any): Promise<any> {
+  return mkEmojiBtn(c.icon_emoji || '📦', c.name, { callback_data: `cat:${c.id}` }, c.premium_emoji_id);
 }
 
 async function productEmoji(p: any): Promise<string> {
@@ -115,14 +111,12 @@ async function renderHome(name?: string): Promise<RenderedView> {
 
 async function renderCategories(): Promise<RenderedView> {
   const { data } = await db().from('categories')
-    .select('id, name, slug, icon_emoji').eq('is_active', true).order('sort_order');
+    .select('id, name, slug, icon_emoji, premium_emoji_id').eq('is_active', true).order('sort_order');
   const cats = data ?? [];
   const categoryLines = await Promise.all(cats.map(async (c: any) => (
     `${await categoryEmoji(c)} <b>${escapeHtml(c.name)}</b>`
   )));
-  const categoryRows = await Promise.all(cats.map(async (c: any) => [
-    await mkEmojiBtn(c.icon_emoji || '📦', c.name, { callback_data: `cat:${c.id}` }),
-  ]));
+  const categoryRows = await Promise.all(cats.map(async (c: any) => [await categoryBtn(c)]));
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...categoryRows,
@@ -138,7 +132,7 @@ async function renderCategories(): Promise<RenderedView> {
 async function renderCategoryProducts(categoryId: string): Promise<RenderedView> {
   const supabase = db();
   const [{ data: cat }, { data: prods }] = await Promise.all([
-    supabase.from('categories').select('name, slug, icon_emoji').eq('id', categoryId).maybeSingle(),
+    supabase.from('categories').select('name, slug, icon_emoji, premium_emoji_id').eq('id', categoryId).maybeSingle(),
     supabase.from('products').select('id, name, price, fallback_emoji, premium_emoji_id, stock')
       .eq('category_id', categoryId).eq('status', 'active').order('sort_order').limit(50),
   ]);
