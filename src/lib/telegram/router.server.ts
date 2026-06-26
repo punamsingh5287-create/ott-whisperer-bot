@@ -3,7 +3,7 @@ import {
   sendMessage, sendPhoto, editMessage, answerCallback, getMe, getFile, downloadFile,
   type InlineKeyboard,
 } from './gateway.server';
-import { renderEmoji, escapeHtml, e, eb } from './emoji';
+import { renderEmoji, escapeHtml, e, mkBtn } from './emoji';
 
 type TgUser = { id: number; username?: string; first_name?: string };
 type Network = 'USDT_TRC20' | 'USDT_BEP20' | 'SOL';
@@ -56,25 +56,23 @@ async function getSettings() {
 
 /* ─── menus ───────────────────────────────────────────────────── */
 async function mainMenu(): Promise<InlineKeyboard> {
-  const [home, cats, search, orders, profile, ref, support] = await Promise.all([
-    eb('menu_home', '🏠'), eb('menu_categories', '🗂'), eb('menu_search', '🔎'),
-    eb('menu_orders', '🧾'), eb('menu_profile', '👤'), eb('menu_referrals', '🎁'),
-    eb('menu_support', '💬'),
+  const [cats, search, orders, profile, ref, support, home] = await Promise.all([
+    mkBtn('menu_categories', '🗂', 'Categories', { callback_data: 'menu:cats' }),
+    mkBtn('menu_search', '🔎', 'Search', { callback_data: 'menu:search' }),
+    mkBtn('menu_orders', '🧾', 'My Orders', { callback_data: 'menu:orders' }),
+    mkBtn('menu_profile', '👤', 'Profile', { callback_data: 'menu:profile' }),
+    mkBtn('menu_referrals', '🎁', 'Referrals', { callback_data: 'menu:ref' }),
+    mkBtn('menu_support', '💬', 'Support', { callback_data: 'menu:support' }),
+    mkBtn('menu_home', '🏠', 'Home', { callback_data: 'menu:home' }),
   ]);
-  return {
-    inline_keyboard: [
-      [{ text: `${cats}  Categories`, callback_data: 'menu:cats' }, { text: `${search}  Search`, callback_data: 'menu:search' }],
-      [{ text: `${orders}  My Orders`, callback_data: 'menu:orders' }, { text: `${profile}  Profile`, callback_data: 'menu:profile' }],
-      [{ text: `${ref}  Referrals`, callback_data: 'menu:ref' }, { text: `${support}  Support`, callback_data: 'menu:support' }],
-      [{ text: `${home}  Home`, callback_data: 'menu:home' }],
-    ],
-  };
+  return { inline_keyboard: [[cats, search], [orders, profile], [ref, support], [home]] };
 }
 
 async function backMenu(): Promise<InlineKeyboard> {
-  const back = await eb('menu_back', '«');
-  return { inline_keyboard: [[{ text: `${back} Back to menu`, callback_data: 'menu:home' }]] };
+  const back = await mkBtn('menu_back', '«', 'Back to menu', { callback_data: 'menu:home' });
+  return { inline_keyboard: [[back]] };
 }
+
 
 /* ─── views ───────────────────────────────────────────────────── */
 async function viewHome(chatId: number, name?: string) {
@@ -88,14 +86,24 @@ async function viewHome(chatId: number, name?: string) {
   await sendMessage(chatId, text, { reply_markup: await mainMenu() });
 }
 
+function rowIcon(row: { premium_emoji_id?: string | null }): { icon_custom_emoji_id?: string } {
+  const id = row.premium_emoji_id ? String(row.premium_emoji_id).replace(/[^0-9]/g, '') : '';
+  return id ? { icon_custom_emoji_id: id } : {};
+}
+
 async function viewCategories(chatId: number, messageId?: number) {
-  const { data } = await db().from('categories').select('id, name, icon_emoji').eq('is_active', true).order('sort_order');
+  const { data } = await db().from('categories')
+    .select('id, name, icon_emoji, premium_emoji_id').eq('is_active', true).order('sort_order');
   const cats = data ?? [];
-  const back = await eb('menu_back', '«');
+  const back = await mkBtn('menu_back', '«', 'Back', { callback_data: 'menu:home' });
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...cats.map((c) => [{ text: `${c.icon_emoji || '📦'}  ${c.name}`, callback_data: `cat:${c.id}` }]),
-      [{ text: `${back} Back`, callback_data: 'menu:home' }],
+      ...cats.map((c: any) => {
+        const icon = rowIcon(c);
+        const text = icon.icon_custom_emoji_id ? c.name : `${c.icon_emoji || '📦'}  ${c.name}`;
+        return [{ text, callback_data: `cat:${c.id}`, ...icon }];
+      }),
+      [back],
     ],
   };
   const text = `${await e('menu_categories', '🗂')}  <b>Categories</b>\n\nChoose a category to browse:`;
@@ -107,18 +115,20 @@ async function viewCategoryProducts(chatId: number, categoryId: string, messageI
   const supabase = db();
   const [{ data: cat }, { data: prods }] = await Promise.all([
     supabase.from('categories').select('name, icon_emoji').eq('id', categoryId).maybeSingle(),
-    supabase.from('products').select('id, name, price, fallback_emoji, stock')
+    supabase.from('products').select('id, name, price, fallback_emoji, premium_emoji_id, stock')
       .eq('category_id', categoryId).eq('status', 'active').order('sort_order').limit(50),
   ]);
   const items = prods ?? [];
-  const back = await eb('menu_back', '«');
+  const back = await mkBtn('menu_back', '«', 'Back', { callback_data: 'menu:cats' });
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...items.map((p) => [{
-        text: `${p.fallback_emoji || '✨'}  ${p.name} — $${p.price}${p.stock <= 0 ? ' (sold out)' : ''}`,
-        callback_data: `prod:${p.id}`,
-      }]),
-      [{ text: `${back} Back`, callback_data: 'menu:cats' }],
+      ...items.map((p: any) => {
+        const icon = rowIcon(p);
+        const label = `${p.name} — $${p.price}${p.stock <= 0 ? ' (sold out)' : ''}`;
+        const text = icon.icon_custom_emoji_id ? label : `${p.fallback_emoji || '✨'}  ${label}`;
+        return [{ text, callback_data: `prod:${p.id}`, ...icon }];
+      }),
+      [back],
     ],
   };
   const header = `${cat?.icon_emoji || '📦'} <b>${escapeHtml(cat?.name || 'Products')}</b>`;
@@ -126,6 +136,7 @@ async function viewCategoryProducts(chatId: number, categoryId: string, messageI
   if (messageId) await editMessage(chatId, messageId, text, kb);
   else await sendMessage(chatId, text, { reply_markup: kb });
 }
+
 
 async function viewProduct(chatId: number, productId: string) {
   const { data: p } = await db().from('products').select('*, categories(name, icon_emoji)').eq('id', productId).maybeSingle();
@@ -137,14 +148,15 @@ async function viewProduct(chatId: number, productId: string) {
     `${emoji}  <b>${escapeHtml(p.name)}</b>\n\n` +
     `${escapeHtml(p.description || '')}\n\n` +
     `💰 <b>$${p.price}</b>\n⏳ ${p.duration_days} days\n${stockLine}${tagLine}`;
-  const buy = await eb('action_buy', '🛒');
-  const back = await eb('menu_back', '«');
+  const buy = await mkBtn('action_buy', '🛒', `Buy now — $${p.price}`, { callback_data: `buy:${p.id}` });
+  const back = await mkBtn('menu_back', '«', 'Back', { callback_data: p.category_id ? `cat:${p.category_id}` : 'menu:cats' });
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...(p.stock > 0 ? [[{ text: `${buy} Buy now — $${p.price}`, callback_data: `buy:${p.id}` }]] : []),
-      [{ text: `${back} Back`, callback_data: p.category_id ? `cat:${p.category_id}` : 'menu:cats' }],
+      ...(p.stock > 0 ? [[buy]] : []),
+      [back],
     ],
   };
+
   if (p.image_url) await sendPhoto(chatId, p.image_url, caption, kb);
   else await sendMessage(chatId, caption, { reply_markup: kb });
 }
@@ -161,14 +173,14 @@ async function viewBuyNetworks(chatId: number, productId: string) {
   const rows: InlineKeyboard['inline_keyboard'] = [];
   for (const net of ['USDT_TRC20', 'USDT_BEP20', 'SOL'] as Network[]) {
     if (!have.has(net)) continue;
-    const emoji = await eb(NETWORK_KEY[net], '💠');
-    rows.push([{ text: `${emoji}  Pay with ${NETWORK_LABEL[net]}`, callback_data: `pay:${net}:${productId}` }]);
+    rows.push([await mkBtn(NETWORK_KEY[net], '💠', `Pay with ${NETWORK_LABEL[net]}`, { callback_data: `pay:${net}:${productId}` })]);
   }
   if (rows.length === 0) {
     await sendMessage(chatId, `${await e('status_error', '⚠️')} No payment networks configured. Contact support.`, { reply_markup: await backMenu() });
     return;
   }
-  rows.push([{ text: `${await eb('menu_back', '«')} Cancel`, callback_data: `prod:${productId}` }]);
+  rows.push([await mkBtn('menu_back', '«', 'Cancel', { callback_data: `prod:${productId}` })]);
+
   await sendMessage(chatId,
     `💳 <b>Choose a payment network</b>\n\n` +
     `<b>${escapeHtml(p.name)}</b>\nAmount: <b>$${p.price}</b>\n\n` +
@@ -199,7 +211,6 @@ async function startPayment(chatId: number, botUserId: string, productId: string
   }).eq('id', botUserId);
 
   const pending = await e('status_pending', '⏳');
-  const paidBtn = await eb('action_paid', '✅');
   const caption =
     `${pending}  <b>Payment Instructions</b>\n\n` +
     `Product: <b>${escapeHtml(row.product_name)}</b>\n` +
@@ -211,10 +222,11 @@ async function startPayment(chatId: number, botUserId: string, productId: string
     `Tap "I have paid" once submitted.`;
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      [{ text: `${paidBtn} I have paid`, callback_data: `paid:${row.payment_id}` }],
-      [{ text: `${await eb('menu_back', '«')} Cancel`, callback_data: 'menu:home' }],
+      [await mkBtn('action_paid', '✅', 'I have paid', { callback_data: `paid:${row.payment_id}` })],
+      [await mkBtn('menu_back', '«', 'Cancel', { callback_data: 'menu:home' })],
     ],
   };
+
   if (wallet.qr_url) await sendPhoto(chatId, wallet.qr_url, caption, kb);
   else await sendMessage(chatId, caption, { reply_markup: kb });
 }
@@ -287,13 +299,19 @@ async function viewSearchPrompt(chatId: number, botUserId: string) {
 async function runSearch(chatId: number, query: string) {
   const q = `%${query.replace(/[%_]/g, '')}%`;
   const { data } = await db().from('products')
-    .select('id, name, price, fallback_emoji, stock')
+    .select('id, name, price, fallback_emoji, premium_emoji_id, stock')
     .or(`name.ilike.${q},description.ilike.${q}`).eq('status', 'active').limit(20);
   const items = data ?? [];
+  const back = await mkBtn('menu_back', '«', 'Menu', { callback_data: 'menu:home' });
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      ...items.map((p) => [{ text: `${p.fallback_emoji || '✨'}  ${p.name} — $${p.price}`, callback_data: `prod:${p.id}` }]),
-      [{ text: `${await eb('menu_back', '«')} Menu`, callback_data: 'menu:home' }],
+      ...items.map((p: any) => {
+        const icon = rowIcon(p);
+        const label = `${p.name} — $${p.price}`;
+        const text = icon.icon_custom_emoji_id ? label : `${p.fallback_emoji || '✨'}  ${label}`;
+        return [{ text, callback_data: `prod:${p.id}`, ...icon }];
+      }),
+      [back],
     ],
   };
   await sendMessage(chatId,
@@ -301,6 +319,7 @@ async function runSearch(chatId: number, query: string) {
       : `${await e('status_error', '⚠️')} No matches for "<b>${escapeHtml(query)}</b>".`,
     { reply_markup: kb });
 }
+
 
 async function captureSupportMessage(chatId: number, botUserId: string, body: string) {
   const supabase = db();

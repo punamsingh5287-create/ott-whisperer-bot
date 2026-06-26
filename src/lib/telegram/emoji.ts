@@ -41,3 +41,27 @@ export async function eb(key: string, fallback = '✨'): Promise<string> {
   const m = await load();
   return m[key]?.fallback_emoji ?? fallback;
 }
+
+/**
+ * Build an inline-keyboard button with Bot API 9.4 `icon_custom_emoji_id`
+ * support. When a Premium emoji ID is configured for `key`, the icon
+ * renders to the left of the button and the fallback emoji is dropped
+ * from the label (to avoid showing two emojis). Bot owner must have
+ * Telegram Premium for the custom icon to actually render.
+ */
+export async function mkBtn(
+  key: string,
+  fallback: string,
+  label: string,
+  action: Record<string, any>,
+): Promise<any> {
+  const m = await load();
+  const p = m[key];
+  const fb = p?.fallback_emoji ?? fallback;
+  const safeId = p?.premium_emoji_id ? String(p.premium_emoji_id).replace(/[^0-9]/g, '') : '';
+  if (safeId) {
+    return { text: label, icon_custom_emoji_id: safeId, ...action };
+  }
+  return { text: `${fb}  ${label}`, ...action };
+}
+
