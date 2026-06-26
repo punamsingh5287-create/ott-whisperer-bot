@@ -35,14 +35,19 @@ function stripButtonCustomEmoji(value: unknown): unknown {
   if (!value || typeof value !== 'object') return value;
   const out: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value)) {
-    if (key === 'icon_custom_emoji_id') continue;
+    if (key === 'icon_custom_emoji_id' || key === '_fallback_text') continue;
+    if (key === 'text' && typeof (value as any)._fallback_text === 'string') {
+      out.text = (value as any)._fallback_text;
+      continue;
+    }
     out[key] = stripButtonCustomEmoji(child);
   }
   return out;
 }
 
 function bodyHasButtonCustomEmoji(body: Record<string, unknown>): boolean {
-  return JSON.stringify(body.reply_markup ?? '').includes('icon_custom_emoji_id');
+  const markup = JSON.stringify(body.reply_markup ?? '');
+  return markup.includes('icon_custom_emoji_id') || markup.includes('_fallback_text');
 }
 
 function shouldRetryWithoutCustomEmoji(data: any): boolean {
@@ -78,7 +83,7 @@ async function tgHtml(method: string, body: Record<string, unknown>, htmlKey: 't
 }
 
 export type InlineKeyboard = {
-  inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string; icon_custom_emoji_id?: string }>>;
+  inline_keyboard: Array<Array<{ text: string; callback_data?: string; url?: string; icon_custom_emoji_id?: string; _fallback_text?: string }>>;
 };
 
 export async function sendMessage(
