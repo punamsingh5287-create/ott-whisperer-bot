@@ -178,7 +178,8 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 <canvas id="particles"></canvas>
 
 <div id="loader">
-  <div class="orb-wrap"><div class="orb"></div><div class="orb-label">LOADING</div></div>
+  <div class="streak"></div><div class="streak s2"></div><div class="streak s3"></div><div class="streak s4"></div>
+  <img class="splash-img" src="/__l5e/assets-v1/5186d4c0-13a2-486e-b26f-49d284ff121a/nexra-splash.png" alt="NEXRA OTT" />
 </div>
 
 <div class="wrap" id="app">
