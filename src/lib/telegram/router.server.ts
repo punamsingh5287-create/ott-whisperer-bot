@@ -198,7 +198,6 @@ async function startPayment(chatId: number, botUserId: string, productId: string
   }).eq('id', botUserId);
 
   const pending = await e('status_pending', '⏳');
-  const paidBtn = await eb('action_paid', '✅');
   const caption =
     `${pending}  <b>Payment Instructions</b>\n\n` +
     `Product: <b>${escapeHtml(row.product_name)}</b>\n` +
@@ -210,10 +209,11 @@ async function startPayment(chatId: number, botUserId: string, productId: string
     `Tap "I have paid" once submitted.`;
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      [{ text: `${paidBtn} I have paid`, callback_data: `paid:${row.payment_id}` }],
-      [{ text: `${await eb('menu_back', '«')} Cancel`, callback_data: 'menu:home' }],
+      [await mkBtn('action_paid', '✅', 'I have paid', { callback_data: `paid:${row.payment_id}` })],
+      [await mkBtn('menu_back', '«', 'Cancel', { callback_data: 'menu:home' })],
     ],
   };
+
   if (wallet.qr_url) await sendPhoto(chatId, wallet.qr_url, caption, kb);
   else await sendMessage(chatId, caption, { reply_markup: kb });
 }
