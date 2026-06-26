@@ -98,7 +98,8 @@ async function getSettings() {
 const MINI_APP_URL = process.env.MINI_APP_URL || 'https://project--0e9ed495-46e4-42a2-801a-3588d25b626e-dev.lovable.app/api/public/app';
 
 async function mainMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
-  const [cats, search, orders, profile, wallet, ref, support, langBtn, close] = await Promise.all([
+  const [openApp, cats, search, orders, profile, wallet, ref, support, langBtn, close] = await Promise.all([
+    mkBtn('action_open_app', '🚀', t(lang, 'open_app'), { web_app: { url: MINI_APP_URL } }),
     mkBtn('menu_categories', '🗂', t(lang, 'categories'), { callback_data: 'menu:cats' }),
     mkBtn('menu_search', '🔎', t(lang, 'search'), { callback_data: 'menu:search' }),
     mkBtn('menu_orders', '🧾', t(lang, 'my_orders'), { callback_data: 'menu:orders' }),
@@ -109,7 +110,6 @@ async function mainMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
     mkBtn('menu_lang', '🌐', t(lang, 'language'), { callback_data: 'menu:lang' }),
     mkBtn('menu_close', '✕', t(lang, 'close'), { callback_data: 'nav:close' }),
   ]);
-  const openApp = { text: `🚀  ${t(lang, 'open_app')}`, web_app: { url: MINI_APP_URL } } as any;
   return { inline_keyboard: [[openApp], [cats, search], [orders, wallet], [profile, ref], [support, langBtn], [close]] };
 }
 
@@ -138,10 +138,12 @@ async function renderHome(name?: string, lang: Lang = 'en'): Promise<RenderedVie
 }
 
 async function renderLanguage(lang: Lang): Promise<RenderedView> {
-  const rows: InlineKeyboard['inline_keyboard'] = LANGS.map((L) => [{ text: `${L.flag}  ${L.name}${L.code === lang ? '  ✓' : ''}`, callback_data: `lang:${L.code}` }]);
+  const rows: InlineKeyboard['inline_keyboard'] = await Promise.all(
+    LANGS.map(async (L) => [await mkBtn('menu_lang', '🌐', `${L.name}${L.code === lang ? '  ✓' : ''}`, { callback_data: `lang:${L.code}` })]),
+  );
   rows.push(await navRow(lang));
   return {
-    text: `🌐  <b>${t(lang, 'language')}</b>\n\n${t(lang, 'choose_lang')}`,
+    text: `${await e('menu_lang', '🌐')}  <b>${t(lang, 'language')}</b>\n\n${t(lang, 'choose_lang')}`,
     reply_markup: { inline_keyboard: rows },
   };
 }
@@ -167,7 +169,7 @@ async function renderWallet(botUserId: string, lang: Lang): Promise<RenderedView
     `<b>${t(lang, 'deposit')}</b>\n${t(lang, 'deposit_info')}\n\n${networkLines}`;
 
   const rows: InlineKeyboard['inline_keyboard'] = [];
-  if (ws.length) rows.push([{ text: `✅  ${t(lang, 'deposited')}`, callback_data: 'wallet:deposited' }]);
+  if (ws.length) rows.push([await mkBtn('action_deposited', '✅', t(lang, 'deposited'), { callback_data: 'wallet:deposited' })]);
   rows.push(await navRow(lang));
   return { text, reply_markup: { inline_keyboard: rows } };
 }
