@@ -72,15 +72,18 @@ async function editCurrentMessage(
   messageKind: 'text' | 'media',
   view: RenderedView,
 ): Promise<boolean> {
-  const primary = messageKind === 'media'
-    ? await editMessageCaption(chatId, messageId, view.text, view.reply_markup)
-    : await editMessage(chatId, messageId, view.text, view.reply_markup);
-  if (ok(primary)) return true;
+  const tryText = () => editMessage(chatId, messageId, view.text, view.reply_markup);
+  const tryCaption = () => editMessageCaption(chatId, messageId, view.text, view.reply_markup);
+  const tryMarkup = () => editMessageReplyMarkup(chatId, messageId, view.reply_markup);
 
-  const fallback = messageKind === 'media'
-    ? await editMessage(chatId, messageId, view.text, view.reply_markup)
-    : await editMessageCaption(chatId, messageId, view.text, view.reply_markup);
-  return ok(fallback);
+  const order = messageKind === 'media' ? [tryCaption, tryText] : [tryText, tryCaption];
+  for (const attempt of order) {
+    const r = await attempt();
+    if (ok(r)) return true;
+  }
+  // Last resort: at least refresh the keyboard so the message stays in sync.
+  const r = await tryMarkup();
+  return ok(r);
 }
 
 export async function setFlowAction(botUserId: string, action: Record<string, unknown> | null) {
@@ -101,6 +104,8 @@ export async function showView(args: ShowViewArgs): Promise<boolean> {
   const pending = await readPending(args.botUserId);
   const existing = pending.nav;
   const view = await args.renderView(args.state);
+  // Prefer the message the user just interacted with — it's always editable
+  // and ensures we stay on a single bubble even if a stale message_id is cached.
   const targetMessageId = args.messageId ?? existing?.message_id;
   const messageKind = isMediaMessage(args.callbackMessage) ? 'media' : (existing?.message_kind ?? 'text');
 
@@ -147,8 +152,12 @@ export async function goBack(args: Omit<ShowViewArgs, 'state'> & { fallback: Nav
   const stack = [...(nav?.stack ?? [])];
   const previous = stack.pop() ?? args.fallback;
   const view = await args.renderView(previous);
+
+  // Always edit the message the user actually tapped Back on — that's the one
+  // guaranteed to exist and be recent. Fall back to the tracked message only
+  // if no callback message id was provided (e.g. text-driven back).
   const targetMessageId = args.messageId ?? nav?.message_id;
-  if (!targetMessageId) return showView({ ...args, state: previous, reset: previous.screen === args.fallback.screen, allowNewMessage: false });
+  if (!targetMessageId) return false;
 
   const messageKind = isMediaMessage(args.callbackMessage) ? 'media' : (nav?.message_kind ?? 'text');
   const edited = await editCurrentMessage(args.chatId, targetMessageId, messageKind, view);
@@ -157,6 +166,8 @@ export async function goBack(args: Omit<ShowViewArgs, 'state'> & { fallback: Nav
   const latestPending = await readPending(args.botUserId);
   latestPending.nav = {
     chat_id: args.chatId,
+    // Re-anchor the session to the message we just edited so future
+    // navigation continues editing this same bubble (no new messages).
     message_id: targetMessageId,
     message_kind: messageKind,
     current: previous,
