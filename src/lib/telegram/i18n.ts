@@ -153,6 +153,7 @@ const D: Record<string, Record<Lang, string>> = {
   /* ── notifications ──────────────────────────────────────────── */
   payment_approved: { en: 'Payment approved!', ru: 'Платёж одобрен!', zh: '付款已批准!', pl: 'Płatność zatwierdzona!', vi: 'Đã duyệt thanh toán!' },
   payment_active: { en: 'Your subscription is now active.', ru: 'Ваша подписка активирована.', zh: '您的订阅现已激活。', pl: 'Twoja subskrypcja jest aktywna.', vi: 'Đăng ký của bạn đã được kích hoạt.' },
+  insufficient_balance: { en: 'Insufficient wallet balance.', ru: 'Недостаточно средств в кошельке.', zh: '钱包余额不足。', pl: 'Niewystarczające środki w portfelu.', vi: 'Số dư ví không đủ.' },
   payment_rejected: { en: 'Payment rejected', ru: 'Платёж отклонён', zh: '付款被拒绝', pl: 'Płatność odrzucona', vi: 'Thanh toán bị từ chối' },
   reason:         { en: 'Reason', ru: 'Причина', zh: '原因', pl: 'Powód', vi: 'Lý do' },
   contact_support_err: { en: 'Contact support if you believe this is an error.',
