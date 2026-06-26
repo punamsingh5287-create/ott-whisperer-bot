@@ -738,6 +738,28 @@ export async function handleCallback(cb: any) {
   if (data.startsWith('cat:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'category', params: { categoryId: data.slice(4) } } }); return; }
   if (data.startsWith('prod:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'product', params: { productId: data.slice(5) } } }); return; }
   if (data.startsWith('buy:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'buy', params: { productId: data.slice(4) } } }); return; }
+  if (data.startsWith('wpay:')) {
+    const lang = await getUserLang(botUserId);
+    const productId = data.slice(5);
+    const { data: rpc, error } = await db().rpc('purchase_with_wallet', { _product_id: productId, _bot_user_id: botUserId });
+    const row: any = Array.isArray(rpc) ? rpc[0] : rpc;
+    if (error || !row || row.error) {
+      const msg = row?.error === 'insufficient_balance' ? t(lang, 'insufficient_balance')
+        : row?.error === 'out_of_stock' ? t(lang, 'out_of_stock_err')
+        : row?.error === 'inactive' ? t(lang, 'product_unavailable')
+        : t(lang, 'start_pay_err');
+      await answerCallback(cb.id, msg, true);
+      return;
+    }
+    await answerCallback(cb.id, t(lang, 'payment_approved'));
+    await sendMessage(chatId,
+      `${await e('status_success', '🎉')} <b>${t(lang, 'payment_approved')}</b>\n\n` +
+      `${escapeHtml(row.product_name)} — $${row.amount}\n` +
+      `${t(lang, 'balance')}: <b>$${Number(row.new_balance).toFixed(2)}</b>\n\n` +
+      `${t(lang, 'payment_active')}`);
+    await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'orders' }, replace: true });
+    return;
+  }
   if (data.startsWith('pay:')) {
     const [, net, prodId] = data.split(':');
     await answerCallback(cb.id);
