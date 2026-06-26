@@ -57,6 +57,27 @@ async function tgHtml(method: string, body: Record<string, unknown>, htmlKey: 't
   }
   if (!shouldRetryWithoutCustomEmoji(first)) return first;
 
+  const withoutButtonIcons = bodyHasButtonCustomEmoji(body)
+    ? { ...body, reply_markup: stripButtonCustomEmoji(body.reply_markup) }
+    : body;
+
+  if (withoutButtonIcons !== body) {
+    const second = await tg(method, withoutButtonIcons);
+    if (second?.ok !== false || !shouldRetryWithoutCustomEmoji(second)) return second;
+  }
+
+  const nextBody = {
+    ...withoutButtonIcons,
+    ...(typeof withoutButtonIcons[htmlKey] === 'string' && String(withoutButtonIcons[htmlKey]).includes('<tg-emoji')
+      ? { [htmlKey]: stripTelegramCustomEmoji(String(withoutButtonIcons[htmlKey])) }
+      : {}),
+  };
+
+  if (nextBody === withoutButtonIcons) return first;
+  return tg(method, nextBody);
+}
+
+async function tgHtmlOld(method: string, body: Record<string, unknown>, htmlKey: 'text' | 'caption') {
   const nextBody = {
     ...body,
     ...(typeof body[htmlKey] === 'string' && String(body[htmlKey]).includes('<tg-emoji')
