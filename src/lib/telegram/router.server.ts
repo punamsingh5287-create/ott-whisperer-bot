@@ -121,11 +121,11 @@ async function viewCategoryProducts(chatId: number, categoryId: string, messageI
   const kb: InlineKeyboard = {
     inline_keyboard: [
       ...items.map((p: any) => {
-        const icon = rowIcon(p);
         const label = `${p.name} — $${p.price}${p.stock <= 0 ? ' (sold out)' : ''}`;
-        const text = icon.icon_custom_emoji_id ? label : `${p.fallback_emoji || '✨'}  ${label}`;
-        return [{ text, callback_data: `prod:${p.id}`, ...icon }];
+        const text = `${p.fallback_emoji || '✨'}  ${label}`;
+        return [{ text, callback_data: `prod:${p.id}` }];
       }),
+
       [back],
     ],
   };
