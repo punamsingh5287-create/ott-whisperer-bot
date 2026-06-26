@@ -112,7 +112,7 @@ export async function showView(args: ShowViewArgs): Promise<boolean> {
     edited = await editCurrentMessage(args.chatId, targetMessageId, messageKind, view);
   }
 
-  if (!edited && !targetMessageId && args.allowNewMessage) {
+  if (!edited && args.allowNewMessage) {
     const sent = await sendMessage(args.chatId, view.text, { reply_markup: view.reply_markup });
     if (sent?.ok && sent?.result?.message_id) {
       edited = true;
