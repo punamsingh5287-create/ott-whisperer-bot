@@ -136,6 +136,33 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 @keyframes fadeDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
 
 .empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:13px}
+.sheet{display:none}
+.modal{position:fixed;inset:0;background:rgba(2,1,12,.7);backdrop-filter:blur(14px);z-index:60;display:grid;place-items:flex-end;animation:fadeIn .25s ease}
+.modal.hidden{display:none}
+.modal-card{width:100%;max-width:520px;margin:0 auto;padding:18px;border-radius:24px 24px 0 0;max-height:82vh;overflow-y:auto;animation:slideUp .35s cubic-bezier(.2,.8,.2,1)}
+.modal-card h3{font-family:Sora;font-size:18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between}
+.modal-card .close-x{font-size:20px;color:var(--muted);padding:4px 10px;border-radius:10px;background:rgba(255,255,255,.05)}
+.lang-opt{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line);margin-bottom:8px;cursor:pointer}
+.lang-opt.active{box-shadow:inset 0 0 0 1px rgba(124,58,237,.7),0 0 18px rgba(124,58,237,.3)}
+.lang-opt .flag{font-size:22px}
+.lang-opt .check{margin-left:auto;color:var(--c2)}
+.wallet-row{padding:14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line);margin-bottom:8px}
+.wallet-row .net{font-family:Sora;font-weight:700;font-size:13px;margin-bottom:6px;color:var(--c2)}
+.wallet-row .addr{font-family:monospace;font-size:11px;word-break:break-all;color:var(--muted);padding:8px;background:rgba(0,0,0,.35);border-radius:8px;margin-top:6px}
+.balance-card{padding:18px;border-radius:18px;background:linear-gradient(135deg,rgba(124,58,237,.3),rgba(6,182,212,.2));border:1px solid var(--line);margin-bottom:14px;text-align:center}
+.balance-card .lbl{font-size:12px;color:var(--muted);margin-bottom:6px}
+.balance-card .amt{font-family:Sora;font-size:32px;font-weight:800;background:linear-gradient(90deg,var(--c2),var(--c1));-webkit-background-clip:text;background-clip:text;color:transparent}
+.tab-row{display:flex;gap:6px;margin-bottom:14px;padding:4px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+.tab-row button{flex:1;padding:10px;border-radius:10px;font-size:12px;font-weight:600;color:var(--muted)}
+.tab-row button.active{background:linear-gradient(135deg,var(--c1),var(--c3));color:#fff;box-shadow:0 4px 14px rgba(124,58,237,.5)}
+.deposit-btn{width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,var(--c1),var(--c3));font-weight:700;color:#fff;margin-top:10px;box-shadow:0 6px 22px rgba(124,58,237,.5)}
+.order-row{padding:12px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid var(--line);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.order-row .st{font-size:10px;padding:3px 8px;border-radius:999px;font-weight:600}
+.st.paid,.st.delivered{background:rgba(16,185,129,.2);color:#10b981}
+.st.pending{background:rgba(251,191,36,.2);color:#fbbf24}
+.st.cancelled{background:rgba(239,68,68,.2);color:#ef4444}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:none}}
 </style>
 </head>
 <body>
