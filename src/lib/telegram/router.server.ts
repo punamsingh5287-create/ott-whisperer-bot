@@ -186,24 +186,63 @@ async function renderBuyNetworks(productId: string): Promise<RenderedView> {
 
 async function renderPayment(productId: string, network: Network, botUserId: string, cbId?: string): Promise<RenderedView> {
   const supabase = db();
-  const { data: wallet } = await supabase.from('wallets')
-    .select('id, address, qr_url, label').eq('network', network).eq('is_active', true).limit(1).maybeSingle();
-  if (!wallet) return { text: `${await e('status_error', '⚠️')} No wallet configured for this network.`, reply_markup: await backMenu() };
+  const activePayment = await getFlowAction<{
+    type?: string;
+    payment_id?: string;
+    order_id?: string;
+    product_id?: string;
+    network?: Network;
+  }>(botUserId);
 
-  const { data, error } = await supabase.rpc('create_pending_order', {
-    _product_id: productId, _bot_user_id: botUserId, _network: network, _wallet_id: wallet.id,
-  });
-  const row = Array.isArray(data) ? data[0] : data;
-  if (error || !row || row.error) {
-    const msg = row?.error === 'out_of_stock' ? 'Out of stock 😔'
-      : row?.error === 'inactive' ? 'Product unavailable'
-      : row?.error === 'wallet_unavailable' ? 'Wallet not available'
-      : 'Could not start payment';
-    if (cbId) await answerCallback(cbId, msg, true);
-    return { text: `${await e('status_error', '⚠️')} ${escapeHtml(msg)}`, reply_markup: await backMenu() };
+  let row: any = null;
+  let wallet: any = null;
+
+  if (activePayment?.type === 'payment_proof' && activePayment.payment_id && activePayment.product_id === productId && activePayment.network === network) {
+    const { data: payment } = await supabase.from('payments')
+      .select('id, amount, network, order_id, wallet_id')
+      .eq('id', activePayment.payment_id).maybeSingle();
+    if (payment) {
+      const [{ data: order }, { data: savedWallet }] = await Promise.all([
+        supabase.from('orders').select('id, products(name)').eq('id', payment.order_id).maybeSingle(),
+        supabase.from('wallets').select('id, address, qr_url, label').eq('id', payment.wallet_id).maybeSingle(),
+      ]);
+      wallet = savedWallet;
+      row = {
+        payment_id: payment.id,
+        order_id: payment.order_id,
+        product_name: (order as any)?.products?.name ?? 'Product',
+        amount: payment.amount,
+      };
+    }
   }
-  if (cbId) await answerCallback(cbId, '✅ Order created');
-  await setFlowAction(botUserId, { type: 'payment_proof', payment_id: row.payment_id, order_id: row.order_id });
+
+  if (!row) {
+    const { data: selectedWallet } = await supabase.from('wallets')
+      .select('id, address, qr_url, label').eq('network', network).eq('is_active', true).limit(1).maybeSingle();
+    wallet = selectedWallet;
+    if (!wallet) return { text: `${await e('status_error', '⚠️')} No wallet configured for this network.`, reply_markup: await backMenu() };
+
+    const { data, error } = await supabase.rpc('create_pending_order', {
+      _product_id: productId, _bot_user_id: botUserId, _network: network, _wallet_id: wallet.id,
+    });
+    row = Array.isArray(data) ? data[0] : data;
+    if (error || !row || row.error) {
+      const msg = row?.error === 'out_of_stock' ? 'Out of stock 😔'
+        : row?.error === 'inactive' ? 'Product unavailable'
+        : row?.error === 'wallet_unavailable' ? 'Wallet not available'
+        : 'Could not start payment';
+      if (cbId) await answerCallback(cbId, msg, true);
+      return { text: `${await e('status_error', '⚠️')} ${escapeHtml(msg)}`, reply_markup: await backMenu() };
+    }
+    if (cbId) await answerCallback(cbId, '✅ Order created');
+    await setFlowAction(botUserId, {
+      type: 'payment_proof',
+      payment_id: row.payment_id,
+      order_id: row.order_id,
+      product_id: productId,
+      network,
+    });
+  }
 
   const pending = await e('status_pending', '⏳');
   const qrLine = wallet.qr_url ? `\nQR: ${escapeHtml(wallet.qr_url)}\n` : '\n';
