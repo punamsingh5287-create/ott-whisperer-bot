@@ -130,15 +130,86 @@ async function backMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
 
 
 /* ─── views ───────────────────────────────────────────────────── */
-async function renderHome(name?: string): Promise<RenderedView> {
+async function renderHome(name?: string, lang: Lang = 'en'): Promise<RenderedView> {
   const s = await getSettings();
   const welcome = await e('welcome', '✨');
   const greet = name ? `, <b>${escapeHtml(name)}</b>` : '';
   const text =
     `${welcome}  <b>${escapeHtml(s.site_name || s.bot_name || 'OTT & AI Store')}</b>\n\n` +
-    `Hey${greet}! ${escapeHtml(s.welcome_text || '')}\n\n` +
-    `Browse premium <b>OTT</b>, <b>AI</b>, <b>Gaming</b> & <b>Utility</b> subscriptions. Instant delivery, crypto-friendly checkout.`;
-  return { text, reply_markup: await mainMenu() };
+    `${t(lang, 'hey')}${greet}! ${escapeHtml(s.welcome_text || '')}\n\n` +
+    `${t(lang, 'browse')}`;
+  return { text, reply_markup: await mainMenu(lang) };
+}
+
+async function renderLanguage(lang: Lang): Promise<RenderedView> {
+  const rows = LANGS.map((L) => [{ text: `${L.flag}  ${L.name}${L.code === lang ? '  ✓' : ''}`, callback_data: `lang:${L.code}` }]);
+  rows.push(await navRow(lang));
+  return {
+    text: `🌐  <b>${t(lang, 'language')}</b>\n\n${t(lang, 'choose_lang')}`,
+    reply_markup: { inline_keyboard: rows },
+  };
+}
+
+async function renderWallet(botUserId: string, lang: Lang): Promise<RenderedView> {
+  const supabase = db();
+  const [{ data: u }, { data: wallets }] = await Promise.all([
+    supabase.from('bot_users').select('balance, total_spent').eq('id', botUserId).maybeSingle(),
+    supabase.from('wallets').select('id, network, address, label').eq('is_active', true),
+  ]);
+  const balance = Number((u as any)?.balance ?? 0);
+  const spent = Number((u as any)?.total_spent ?? 0);
+  const ws = (wallets ?? []) as any[];
+
+  const networkLines = ws.length
+    ? ws.map((w) => `<b>${NETWORK_LABEL[w.network as Network] || w.network}</b>${w.label ? ` · ${escapeHtml(w.label)}` : ''}\n<code>${escapeHtml(w.address)}</code>`).join('\n\n')
+    : t(lang, 'no_wallets');
+
+  const text =
+    `💰  <b>${t(lang, 'wallet')}</b>\n\n` +
+    `${t(lang, 'balance')}: <b>$${balance.toFixed(2)}</b>\n` +
+    `Total spent: <b>$${spent.toFixed(2)}</b>\n\n` +
+    `<b>${t(lang, 'deposit')}</b>\n${t(lang, 'deposit_info')}\n\n${networkLines}`;
+
+  const rows: InlineKeyboard['inline_keyboard'] = [];
+  if (ws.length) rows.push([{ text: `✅  ${t(lang, 'deposited')}`, callback_data: 'wallet:deposited' }]);
+  rows.push(await navRow(lang));
+  return { text, reply_markup: { inline_keyboard: rows } };
+}
+
+async function captureDepositProof(chatId: number, botUserId: string, opts: { text?: string; photoFileId?: string }) {
+  const supabase = db();
+  const lang = await getUserLang(botUserId);
+  let screenshotUrl: string | null = null;
+  if (opts.photoFileId) {
+    try {
+      const f = await getFile(opts.photoFileId);
+      const filePath = f?.result?.file_path as string | undefined;
+      if (filePath) {
+        const bytes = await downloadFile(filePath);
+        const ext = filePath.split('.').pop() || 'jpg';
+        const objKey = `topup-${botUserId}-${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('payment-proofs').upload(
+          objKey, new Uint8Array(bytes), { contentType: `image/${ext}`, upsert: false },
+        );
+        if (!upErr) screenshotUrl = objKey;
+      }
+    } catch (e) { console.error('topup proof upload failed', e); }
+  }
+  const { data: w } = await supabase.from('wallets').select('id, network').eq('is_active', true).limit(1).maybeSingle();
+  await supabase.from('wallet_topups').insert({
+    bot_user_id: botUserId,
+    wallet_id: (w as any)?.id ?? null,
+    network: (w as any)?.network ?? 'USDT_TRC20',
+    amount: 0,
+    tx_hash: opts.text ?? null,
+    screenshot_url: screenshotUrl,
+    status: 'pending',
+  });
+  await setFlowAction(botUserId, null);
+  const edited = await navigateTo({ botUserId, chatId, state: { screen: 'deposit_received' }, replace: true });
+  if (!edited) {
+    await sendMessage(chatId, `${await e('status_success', '✅')} ${t(lang, 'deposit_received')}`, { reply_markup: await backMenu(lang) });
+  }
 }
 
 // Premium button icons are added when Telegram supports them; gateway retries safely without icons otherwise.
