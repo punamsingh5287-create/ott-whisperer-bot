@@ -16,7 +16,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/admin/categories")({ component: CategoriesPage });
 
 const slugify = (s: string) => s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
-const empty = { name: "", slug: "", icon_emoji: "📦", sort_order: 0, is_active: true };
+const empty = { name: "", slug: "", icon_emoji: "📦", premium_emoji_id: "", sort_order: 0, is_active: true };
 
 function CategoriesPage() {
   const qc = useQueryClient();
