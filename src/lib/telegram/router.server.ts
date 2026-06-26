@@ -99,7 +99,7 @@ async function viewHome(chatId: number, name?: string) {
 
 async function viewCategories(chatId: number, messageId?: number) {
   const { data } = await db().from('categories')
-    .select('id, name, icon_emoji, premium_emoji_id').eq('is_active', true).order('sort_order');
+    .select('id, name, icon_emoji').eq('is_active', true).order('sort_order');
   const cats = data ?? [];
   const back = await mkBtn('menu_back', '«', 'Back', { callback_data: 'menu:home' });
   const kb: InlineKeyboard = {
