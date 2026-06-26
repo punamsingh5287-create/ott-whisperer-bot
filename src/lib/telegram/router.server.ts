@@ -3,7 +3,7 @@ import {
   sendMessage, answerCallback, getMe, getFile, downloadFile,
   type InlineKeyboard,
 } from './gateway.server';
-import { renderEmoji, escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
+import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
 import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavState, type RenderedView } from './navigation.server';
 
 type TgUser = { id: number; username?: string; first_name?: string };
