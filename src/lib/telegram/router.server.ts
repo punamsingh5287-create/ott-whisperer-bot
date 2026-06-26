@@ -493,19 +493,19 @@ export async function handleMessage(message: any) {
     }
   }
 
-  if (text.startsWith('/start') || text.startsWith('/menu')) { await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, allowNewMessage: true }); return; }
-  if (text.startsWith('/categories')) { await navigateTo({ botUserId, chatId, state: { screen: 'categories' }, allowNewMessage: true }); return; }
-  if (text.startsWith('/orders')) { await navigateTo({ botUserId, chatId, state: { screen: 'orders' }, allowNewMessage: true }); return; }
-  if (text.startsWith('/profile')) { await navigateTo({ botUserId, chatId, state: { screen: 'profile' }, allowNewMessage: true }); return; }
-  if (text.startsWith('/referrals')) { await navigateTo({ botUserId, chatId, state: { screen: 'referrals' }, allowNewMessage: true }); return; }
-  if (text.startsWith('/support')) { await navigateTo({ botUserId, chatId, state: { screen: 'support' }, allowNewMessage: true }); return; }
+  if (text.startsWith('/start') || text.startsWith('/menu')) { await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true }); return; }
+  if (text.startsWith('/categories')) { await navigateTo({ botUserId, chatId, state: { screen: 'categories' }, forceNewMessage: true }); return; }
+  if (text.startsWith('/orders')) { await navigateTo({ botUserId, chatId, state: { screen: 'orders' }, forceNewMessage: true }); return; }
+  if (text.startsWith('/profile')) { await navigateTo({ botUserId, chatId, state: { screen: 'profile' }, forceNewMessage: true }); return; }
+  if (text.startsWith('/referrals')) { await navigateTo({ botUserId, chatId, state: { screen: 'referrals' }, forceNewMessage: true }); return; }
+  if (text.startsWith('/support')) { await navigateTo({ botUserId, chatId, state: { screen: 'support' }, forceNewMessage: true }); return; }
   if (text.startsWith('/search')) {
     const q = text.slice(7).trim();
-    if (q) await navigateTo({ botUserId, chatId, state: { screen: 'search_results', params: { query: q } }, allowNewMessage: true });
-    else await navigateTo({ botUserId, chatId, state: { screen: 'search' }, allowNewMessage: true });
+    if (q) await navigateTo({ botUserId, chatId, state: { screen: 'search_results', params: { query: q } }, forceNewMessage: true });
+    else await navigateTo({ botUserId, chatId, state: { screen: 'search' }, forceNewMessage: true });
     return;
   }
-  await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, allowNewMessage: true });
+  await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true });
 }
 
 export async function handleCallback(cb: any) {
