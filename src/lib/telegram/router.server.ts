@@ -288,30 +288,30 @@ async function renderProduct(productId: string, lang: Lang = 'en'): Promise<Rend
 }
 
 /* ─── crypto checkout ─────────────────────────────────────────── */
-export async function renderBuyNetworks(productId: string): Promise<RenderedView> {
+export async function renderBuyNetworks(productId: string, lang: Lang = 'en'): Promise<RenderedView> {
   const { data: p } = await db().from('products').select('name, price, stock, status').eq('id', productId).maybeSingle();
   if (!p || p.status !== 'active' || p.stock <= 0) {
-    return { text: `${await e('status_error', '⚠️')} This product is unavailable.`, reply_markup: await backMenu() };
+    return { text: `${await e('status_error', '⚠️')} ${t(lang, 'product_unavailable')}`, reply_markup: await backMenu(lang) };
   }
   const { data: wallets } = await db().from('wallets').select('id, network').eq('is_active', true);
   const have = new Set((wallets ?? []).map((w: any) => w.network));
   const rows: InlineKeyboard['inline_keyboard'] = [];
   for (const net of ['USDT_TRC20', 'USDT_BEP20', 'SOL'] as Network[]) {
     if (!have.has(net)) continue;
-    rows.push([await mkBtn(NETWORK_KEY[net], '💠', `Pay with ${NETWORK_LABEL[net]}`, { callback_data: `pay:${net}:${productId}` })]);
+    rows.push([await mkBtn(NETWORK_KEY[net], '💠', `${t(lang, 'pay_with')} ${NETWORK_LABEL[net]}`, { callback_data: `pay:${net}:${productId}` })]);
   }
   if (rows.length === 0) {
-    return { text: `${await e('status_error', '⚠️')} No payment networks configured. Contact support.`, reply_markup: await backMenu() };
+    return { text: `${await e('status_error', '⚠️')} ${t(lang, 'no_networks')}`, reply_markup: await backMenu(lang) };
   }
-  rows.push(await navRow());
+  rows.push(await navRow(lang));
 
-  return { text: `${await e('payment', '💳')} <b>Choose a payment network</b>\n\n` +
-    `<b>${escapeHtml(p.name)}</b>\nAmount: <b>$${p.price}</b>\n\n` +
-    `Pick the crypto network you'd like to pay with. After paying, send your transaction hash or screenshot here for verification.`,
+  return { text: `${await e('payment', '💳')} <b>${t(lang, 'choose_network')}</b>\n\n` +
+    `<b>${escapeHtml(p.name)}</b>\n${t(lang, 'amount')}: <b>$${p.price}</b>\n\n` +
+    `${t(lang, 'pay_intro')}`,
     reply_markup: { inline_keyboard: rows } };
 }
 
-async function renderPayment(productId: string, network: Network, botUserId: string, cbId?: string): Promise<RenderedView> {
+async function renderPayment(productId: string, network: Network, botUserId: string, lang: Lang = 'en', cbId?: string): Promise<RenderedView> {
   const supabase = db();
   const activePayment = await getFlowAction<{
     type?: string;
@@ -337,7 +337,7 @@ async function renderPayment(productId: string, network: Network, botUserId: str
       row = {
         payment_id: payment.id,
         order_id: payment.order_id,
-        product_name: (order as any)?.products?.name ?? 'Product',
+        product_name: (order as any)?.products?.name ?? t(lang, 'product'),
         amount: payment.amount,
       };
     }
@@ -347,21 +347,21 @@ async function renderPayment(productId: string, network: Network, botUserId: str
     const { data: selectedWallet } = await supabase.from('wallets')
       .select('id, address, qr_url, label').eq('network', network).eq('is_active', true).limit(1).maybeSingle();
     wallet = selectedWallet;
-    if (!wallet) return { text: `${await e('status_error', '⚠️')} No wallet configured for this network.`, reply_markup: await backMenu() };
+    if (!wallet) return { text: `${await e('status_error', '⚠️')} ${t(lang, 'no_wallet_net')}`, reply_markup: await backMenu(lang) };
 
     const { data, error } = await supabase.rpc('create_pending_order', {
       _product_id: productId, _bot_user_id: botUserId, _network: network, _wallet_id: wallet.id,
     });
     row = Array.isArray(data) ? data[0] : data;
     if (error || !row || row.error) {
-        const msg = row?.error === 'out_of_stock' ? 'Out of stock'
-        : row?.error === 'inactive' ? 'Product unavailable'
-        : row?.error === 'wallet_unavailable' ? 'Wallet not available'
-        : 'Could not start payment';
+      const msg = row?.error === 'out_of_stock' ? t(lang, 'out_of_stock_err')
+        : row?.error === 'inactive' ? t(lang, 'product_unavailable')
+        : row?.error === 'wallet_unavailable' ? t(lang, 'wallet_unavailable')
+        : t(lang, 'start_pay_err');
       if (cbId) await answerCallback(cbId, msg, true);
-      return { text: `${await e('status_error', '⚠️')} ${escapeHtml(msg)}`, reply_markup: await backMenu() };
+      return { text: `${await e('status_error', '⚠️')} ${escapeHtml(msg)}`, reply_markup: await backMenu(lang) };
     }
-    if (cbId) await answerCallback(cbId, 'Order created');
+    if (cbId) await answerCallback(cbId, t(lang, 'order_created'));
     await setFlowAction(botUserId, {
       type: 'payment_proof',
       payment_id: row.payment_id,
@@ -370,23 +370,22 @@ async function renderPayment(productId: string, network: Network, botUserId: str
       network,
     });
   }
-  if (!wallet) return { text: `${await e('status_error', '⚠️')} Wallet details are unavailable.`, reply_markup: await backMenu() };
+  if (!wallet) return { text: `${await e('status_error', '⚠️')} ${t(lang, 'no_wallet_net')}`, reply_markup: await backMenu(lang) };
 
   const pending = await e('status_pending', '⏳');
   const qrLine = wallet.qr_url ? `\nQR: ${escapeHtml(wallet.qr_url)}\n` : '\n';
   const text =
-    `${pending}  <b>Payment Instructions</b>\n\n` +
-    `Product: <b>${escapeHtml(row.product_name)}</b>\n` +
-    `Order: <code>${String(row.order_id).slice(0, 8)}</code>\n` +
-    `Network: <b>${NETWORK_LABEL[network]}</b>\n` +
-    `Amount: <b>$${row.amount}</b>\n\n` +
-    `Send the <b>exact amount</b> to:\n<code>${escapeHtml(wallet.address)}</code>${qrLine}\n` +
-    `Then reply here with your <b>transaction hash</b> or <b>screenshot</b> of the payment. ` +
-    `Tap "I have paid" once submitted.`;
+    `${pending}  <b>${t(lang, 'pay_instructions')}</b>\n\n` +
+    `${t(lang, 'product')}: <b>${escapeHtml(row.product_name)}</b>\n` +
+    `${t(lang, 'order')}: <code>${String(row.order_id).slice(0, 8)}</code>\n` +
+    `${t(lang, 'network')}: <b>${NETWORK_LABEL[network]}</b>\n` +
+    `${t(lang, 'amount')}: <b>$${row.amount}</b>\n\n` +
+    `${t(lang, 'send_exact')}\n<code>${escapeHtml(wallet.address)}</code>${qrLine}\n` +
+    `${t(lang, 'then_reply')}`;
   const kb: InlineKeyboard = {
     inline_keyboard: [
-      [await mkBtn('action_paid', '✅', 'I have paid', { callback_data: `paid:${row.payment_id}` })],
-      await navRow(),
+      [await mkBtn('action_paid', '✅', t(lang, 'i_have_paid'), { callback_data: `paid:${row.payment_id}` })],
+      await navRow(lang),
     ],
   };
   return { text, reply_markup: kb };
