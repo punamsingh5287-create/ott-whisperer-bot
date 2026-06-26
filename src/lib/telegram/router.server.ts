@@ -18,13 +18,6 @@ const NETWORK_KEY: Record<Network, string> = {
   USDT_TRC20: 'pay_trc20', USDT_BEP20: 'pay_bep20', SOL: 'pay_sol',
 };
 
-function presetSlug(value?: string | null): string {
-  return String(value ?? '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-}
 
 async function categoryEmoji(c: any): Promise<string> {
   return premiumEmoji(c.premium_emoji_id, c.icon_emoji || '📦');
