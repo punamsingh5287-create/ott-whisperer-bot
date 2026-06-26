@@ -101,7 +101,7 @@ canvas#particles{position:fixed;inset:0;z-index:-1;pointer-events:none}
 .cat.active{box-shadow:inset 0 0 0 1px rgba(124,58,237,.7),0 0 22px rgba(124,58,237,.3)}
 
 /* Featured carousel */
-.carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 0 8px;margin:0 -16px;padding-left:16px;padding-right:16px;animation:fadeUp .6s .2s ease both}
+.carousel{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 0 8px;margin:0 -16px;padding-left:16px;padding-right:16px;-webkit-overflow-scrolling:touch}
 .carousel::-webkit-scrollbar{display:none}
 .feature{flex:0 0 78%;scroll-snap-align:start;border-radius:22px;padding:18px;min-height:150px;position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(124,58,237,.4),rgba(6,182,212,.25));border:1px solid rgba(255,255,255,.1)}
 .feature::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 80% at 100% 0,rgba(255,255,255,.18),transparent 50%);pointer-events:none}
