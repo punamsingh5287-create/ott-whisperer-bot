@@ -16,11 +16,13 @@ export type Database = {
     Tables: {
       bot_users: {
         Row: {
+          balance: number
           first_name: string | null
           id: string
           is_banned: boolean
           is_subscribed: boolean
           joined_at: string
+          language: string
           last_active: string
           pending_action: Json | null
           referral_code: string | null
@@ -30,11 +32,13 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          balance?: number
           first_name?: string | null
           id?: string
           is_banned?: boolean
           is_subscribed?: boolean
           joined_at?: string
+          language?: string
           last_active?: string
           pending_action?: Json | null
           referral_code?: string | null
@@ -44,11 +48,13 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          balance?: number
           first_name?: string | null
           id?: string
           is_banned?: boolean
           is_subscribed?: boolean
           joined_at?: string
+          language?: string
           last_active?: string
           pending_action?: Json | null
           referral_code?: string | null
@@ -682,6 +688,66 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wallet_topups: {
+        Row: {
+          admin_note: string | null
+          amount: number
+          bot_user_id: string
+          created_at: string
+          id: string
+          network: Database["public"]["Enums"]["wallet_network"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          screenshot_url: string | null
+          status: string
+          tx_hash: string | null
+          wallet_id: string | null
+        }
+        Insert: {
+          admin_note?: string | null
+          amount: number
+          bot_user_id: string
+          created_at?: string
+          id?: string
+          network: Database["public"]["Enums"]["wallet_network"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          screenshot_url?: string | null
+          status?: string
+          tx_hash?: string | null
+          wallet_id?: string | null
+        }
+        Update: {
+          admin_note?: string | null
+          amount?: number
+          bot_user_id?: string
+          created_at?: string
+          id?: string
+          network?: Database["public"]["Enums"]["wallet_network"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          screenshot_url?: string | null
+          status?: string
+          tx_hash?: string | null
+          wallet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_topups_bot_user_id_fkey"
+            columns: ["bot_user_id"]
+            isOneToOne: false
+            referencedRelation: "bot_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_topups_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wallets: {
         Row: {
