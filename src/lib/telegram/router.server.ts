@@ -56,25 +56,23 @@ async function getSettings() {
 
 /* ─── menus ───────────────────────────────────────────────────── */
 async function mainMenu(): Promise<InlineKeyboard> {
-  const [home, cats, search, orders, profile, ref, support] = await Promise.all([
-    eb('menu_home', '🏠'), eb('menu_categories', '🗂'), eb('menu_search', '🔎'),
-    eb('menu_orders', '🧾'), eb('menu_profile', '👤'), eb('menu_referrals', '🎁'),
-    eb('menu_support', '💬'),
+  const [cats, search, orders, profile, ref, support, home] = await Promise.all([
+    mkBtn('menu_categories', '🗂', 'Categories', { callback_data: 'menu:cats' }),
+    mkBtn('menu_search', '🔎', 'Search', { callback_data: 'menu:search' }),
+    mkBtn('menu_orders', '🧾', 'My Orders', { callback_data: 'menu:orders' }),
+    mkBtn('menu_profile', '👤', 'Profile', { callback_data: 'menu:profile' }),
+    mkBtn('menu_referrals', '🎁', 'Referrals', { callback_data: 'menu:ref' }),
+    mkBtn('menu_support', '💬', 'Support', { callback_data: 'menu:support' }),
+    mkBtn('menu_home', '🏠', 'Home', { callback_data: 'menu:home' }),
   ]);
-  return {
-    inline_keyboard: [
-      [{ text: `${cats}  Categories`, callback_data: 'menu:cats' }, { text: `${search}  Search`, callback_data: 'menu:search' }],
-      [{ text: `${orders}  My Orders`, callback_data: 'menu:orders' }, { text: `${profile}  Profile`, callback_data: 'menu:profile' }],
-      [{ text: `${ref}  Referrals`, callback_data: 'menu:ref' }, { text: `${support}  Support`, callback_data: 'menu:support' }],
-      [{ text: `${home}  Home`, callback_data: 'menu:home' }],
-    ],
-  };
+  return { inline_keyboard: [[cats, search], [orders, profile], [ref, support], [home]] };
 }
 
 async function backMenu(): Promise<InlineKeyboard> {
-  const back = await eb('menu_back', '«');
-  return { inline_keyboard: [[{ text: `${back} Back to menu`, callback_data: 'menu:home' }]] };
+  const back = await mkBtn('menu_back', '«', 'Back to menu', { callback_data: 'menu:home' });
+  return { inline_keyboard: [[back]] };
 }
+
 
 /* ─── views ───────────────────────────────────────────────────── */
 async function viewHome(chatId: number, name?: string) {
