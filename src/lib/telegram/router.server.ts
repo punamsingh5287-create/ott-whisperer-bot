@@ -9,18 +9,18 @@ import { LANGS, t, detect, type Lang } from './i18n';
 
 const SPLASH_IMAGE_URL = 'https://ott-whisperer-bot.lovable.app/__l5e/assets-v1/5186d4c0-13a2-486e-b26f-49d284ff121a/nexra-splash.png';
 
-async function playStartIntro(chatId: number) {
+async function playStartIntro(chatId: number, name?: string) {
   try {
-    const sent = await sendPhoto(chatId, SPLASH_IMAGE_URL, '<b>NEXRA OTT</b> — <i>Premium OTT &amp; AI Access</i>');
-    const messageId = sent?.result?.message_id;
-    if (messageId) {
-      await new Promise((r) => setTimeout(r, 3000));
-      await deleteMessage(chatId, messageId).catch(() => {});
-    }
+    const greet = name ? `, <b>${escapeHtml(name)}</b>` : '';
+    const caption =
+      `<b>NEXRA OTT</b> — <i>Premium OTT &amp; AI Access</i>\n\n` +
+      `Welcome${greet}! ✨\n<i>One access. Endless entertainment.</i>`;
+    await sendPhoto(chatId, SPLASH_IMAGE_URL, caption);
   } catch (err) {
-    console.error('splash failed', err);
+    console.error('welcome photo failed', err);
   }
 }
+
 
 type TgUser = { id: number; username?: string; first_name?: string };
 type Network = 'USDT_TRC20' | 'USDT_BEP20' | 'SOL';
@@ -722,10 +722,15 @@ export async function handleMessage(message: any) {
   }
 
   if (text.startsWith('/start')) {
-    await playStartIntro(chatId);
+    // Fire welcome photo in parallel with menu render for snappier reply.
+    void playStartIntro(chatId, message.from.first_name);
     await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true });
     return;
   }
+
+
+
+
   if (text.startsWith('/menu')) { await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true }); return; }
   if (text.startsWith('/categories')) { await navigateTo({ botUserId, chatId, state: { screen: 'categories' }, forceNewMessage: true }); return; }
   if (text.startsWith('/orders')) { await navigateTo({ botUserId, chatId, state: { screen: 'orders' }, forceNewMessage: true }); return; }
