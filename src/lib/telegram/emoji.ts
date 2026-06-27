@@ -90,7 +90,10 @@ export async function mkBtn(
   const { map: m, defaultPremiumId } = await load();
   const preset = m[key];
   const fb = preset?.fallback_emoji ?? fallback;
-  const lbl = preset?.label?.trim() ? preset.label : label;
+  // The caller always passes a translated label via t(lang, …); preset.label
+  // is only used as a fallback when no caller label exists, otherwise the
+  // admin-saved English label would override every translated language.
+  const lbl = label?.trim() ? label : (preset?.label?.trim() || fallback);
   const premium = cleanPremiumId(preset?.premium_emoji_id || defaultPremiumId);
   const fallbackText = `${fb}  ${lbl}`;
   if (!premium) return { text: fallbackText, ...action };
