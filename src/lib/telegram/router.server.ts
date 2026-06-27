@@ -9,15 +9,12 @@ import { LANGS, t, detect, type Lang } from './i18n';
 
 const SPLASH_IMAGE_URL = 'https://ott-whisperer-bot.lovable.app/__l5e/assets-v1/5186d4c0-13a2-486e-b26f-49d284ff121a/nexra-splash.png';
 
-async function playStartIntro(chatId: number, name?: string) {
-  try {
-    const greet = name ? `, <b>${escapeHtml(name)}</b>` : '';
-    const caption =
-      `<b>NEXRA OTT</b> — <i>Premium OTT &amp; AI Access</i>\n\n` +
-      `Welcome${greet}! ✨\n<i>One access. Endless entertainment.</i>`;
-    await sendPhoto(chatId, SPLASH_IMAGE_URL, caption);
-  } catch (err) {
-    console.error('welcome photo failed', err);
+async function sendStartMenu(chatId: number, botUserId: string, name?: string) {
+  const lang = await getUserLang(botUserId);
+  const view = await renderHome(name, lang);
+  const photo = await sendPhoto(chatId, SPLASH_IMAGE_URL, view.text, view.reply_markup);
+  if (!photo?.ok) {
+    await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
   }
 }
 
@@ -722,9 +719,7 @@ export async function handleMessage(message: any) {
   }
 
   if (text.startsWith('/start')) {
-    // Fire welcome photo in parallel with menu render for snappier reply.
-    void playStartIntro(chatId, message.from.first_name);
-    await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true });
+    await sendStartMenu(chatId, botUserId, message.from.first_name);
     return;
   }
 

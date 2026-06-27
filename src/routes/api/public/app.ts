@@ -32,13 +32,6 @@ img{max-width:100%;display:block}
   radial-gradient(70% 60% at 50% 100%, rgba(37,99,235,.20), transparent 70%),
   #05010f}
 
-/* Splash */
-#loader{position:fixed;inset:0;z-index:50;background:#000;transition:opacity .5s ease-out,visibility .5s;overflow:hidden;contain:strict}
-#loader.hide{opacity:0;visibility:hidden;pointer-events:none}
-#loader::before{content:"";position:absolute;left:50%;top:-20%;width:120%;height:80%;transform:translate3d(-50%,0,0);background:radial-gradient(ellipse at center,rgba(80,150,255,.35),rgba(20,60,140,.12) 40%,transparent 70%);pointer-events:none}
-.splash-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transform:translateZ(0) scale(.92);animation:splashIn 1200ms cubic-bezier(.4,0,.2,1) forwards;will-change:opacity,transform}
-@keyframes splashIn{to{opacity:1;transform:translateZ(0) scale(1)}}
-
 /* Layout */
 .wrap{max-width:520px;margin:0 auto;padding:18px 16px 24px}
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
@@ -145,10 +138,6 @@ img{max-width:100%;display:block}
 </head>
 <body>
 <div class="bg-fx"></div>
-
-<div id="loader" aria-hidden="true">
-  <img class="splash-img" src="/__l5e/assets-v1/5186d4c0-13a2-486e-b26f-49d284ff121a/nexra-splash.png" alt="" decoding="async" fetchpriority="high" />
-</div>
 
 <div class="wrap" id="app">
   <header class="header">
@@ -388,25 +377,11 @@ img{max-width:100%;display:block}
     }catch(e){}
   }
 
-  // Bootstrap: fetch ASAP, hide splash when ready (min 1200ms for splash anim)
-  var splashStart = performance.now();
-  function hideSplash(){
-    var elapsed = performance.now() - splashStart;
-    var wait = Math.max(0, 1400 - elapsed);
-    setTimeout(function(){
-      var l = $('loader');
-      l.classList.add('hide');
-      setTimeout(function(){ l.remove(); }, 600);
-    }, wait);
-  }
-
   fetch('/api/public/storefront').then(function(r){return r.json();}).then(function(d){
     CATS = d.categories||[]; PRODS = d.products||[];
     render();
-    hideSplash();
   }).catch(function(){
     $('grid').innerHTML = '<div class="empty" style="grid-column:1/-1">Could not load store. Pull to refresh.</div>';
-    hideSplash();
   });
 })();
 </script>
