@@ -668,6 +668,7 @@ async function capturePaymentProof(
 /* ─── entry points ────────────────────────────────────────────── */
 export async function handleMessage(message: any) {
   if (!message?.from?.id || !message?.chat?.id) return;
+  void sweepExpiredPayments();
   const chatId = message.chat.id;
   const text: string = message.text ?? message.caption ?? '';
   const startPayload = text.startsWith('/start') ? text.split(' ')[1] : undefined;
