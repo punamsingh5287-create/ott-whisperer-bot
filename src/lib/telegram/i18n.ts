@@ -52,6 +52,8 @@ const D: Record<string, Record<Lang, string>> = {
                     zh: '充值已提交 — 等待管理员批准。',
                     pl: 'Wpłata wysłana — czeka na zatwierdzenie administratora.',
                     vi: 'Đã gửi khoản nạp — chờ quản trị viên duyệt.' },
+  deposit_approved: { en: 'Deposit approved', ru: 'Пополнение одобрено', zh: '充值已批准', pl: 'Wpłata zatwierdzona', vi: 'Đã duyệt nạp tiền' },
+  deposit_rejected: { en: 'Deposit rejected', ru: 'Пополнение отклонено', zh: '充值被拒绝', pl: 'Wpłata odrzucona', vi: 'Nạp tiền bị từ chối' },
   no_wallets:     { en: 'No wallets configured yet. Contact support.',
                     ru: 'Кошельки ещё не настроены. Свяжитесь с поддержкой.',
                     zh: '尚未配置钱包。请联系客服。',
