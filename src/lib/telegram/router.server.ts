@@ -3,7 +3,7 @@ import {
   sendMessage, sendPhoto, deleteMessage, answerCallback, getMe, getFile, downloadFile,
   type InlineKeyboard,
 } from './gateway.server';
-import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
+import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji, premiumIdFor } from './emoji';
 import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavState, type RenderedView } from './navigation.server';
 import { LANGS, t, detect, type Lang } from './i18n';
 
@@ -135,8 +135,9 @@ async function renderHome(name?: string, lang: Lang = 'en'): Promise<RenderedVie
 }
 
 async function renderLanguage(lang: Lang): Promise<RenderedView> {
+  const languagePremiumId = await premiumIdFor('menu_lang');
   const rows: InlineKeyboard['inline_keyboard'] = await Promise.all(
-    LANGS.map(async (L) => [await mkBtn('menu_lang', '🌐', `${L.name}${L.code === lang ? '  ✓' : ''}`, { callback_data: `lang:${L.code}` })]),
+    LANGS.map(async (L) => [await mkEmojiBtn(L.flag || '🌐', `${L.name}${L.code === lang ? '  ✓' : ''}`, { callback_data: `lang:${L.code}` }, languagePremiumId)]),
   );
   rows.push(await navRow(lang));
   return {
