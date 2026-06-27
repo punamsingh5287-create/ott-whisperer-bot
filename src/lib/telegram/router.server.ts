@@ -722,8 +722,12 @@ export async function handleMessage(message: any) {
   }
 
   if (text.startsWith('/start')) {
-    await playStartIntro(chatId);
+    // Fire welcome photo in parallel with menu render for snappier reply.
+    void playStartIntro(chatId, message.from.first_name);
     await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true });
+    return;
+  }
+
     return;
   }
   if (text.startsWith('/menu')) { await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true }); return; }
