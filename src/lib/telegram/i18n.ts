@@ -161,6 +161,19 @@ const D: Record<string, Record<Lang, string>> = {
                     zh: '如果您认为这是错误,请联系客服。',
                     pl: 'Skontaktuj się z pomocą, jeśli to błąd.',
                     vi: 'Liên hệ hỗ trợ nếu bạn cho rằng đây là lỗi.' },
+
+  /* ── payment expiry ─────────────────────────────────────────── */
+  pay_window:     { en: 'Payment window', ru: 'Окно оплаты', zh: '付款窗口', pl: 'Okno płatności', vi: 'Cửa sổ thanh toán' },
+  expires_in:     { en: 'Expires in', ru: 'Истекает через', zh: '剩余时间', pl: 'Wygasa za', vi: 'Hết hạn sau' },
+  minutes_short:  { en: 'min', ru: 'мин', zh: '分钟', pl: 'min', vi: 'phút' },
+  payment_expired_title: { en: 'Payment time expired', ru: 'Время оплаты истекло', zh: '付款时间已过', pl: 'Czas płatności wygasł', vi: 'Đã hết thời gian thanh toán' },
+  payment_expired_body: {
+    en: '⏰ Payment time expired. Your order has been cancelled. Please create a new order to continue.',
+    ru: '⏰ Время оплаты истекло. Ваш заказ отменён. Создайте новый заказ, чтобы продолжить.',
+    zh: '⏰ 付款时间已过。您的订单已被取消。请重新下单以继续。',
+    pl: '⏰ Czas płatności wygasł. Twoje zamówienie zostało anulowane. Utwórz nowe zamówienie, aby kontynuować.',
+    vi: '⏰ Đã hết thời gian thanh toán. Đơn hàng của bạn đã bị hủy. Vui lòng tạo đơn mới để tiếp tục.',
+  },
 };
 
 export function t(lang: string | null | undefined, key: keyof typeof D | string): string {
