@@ -15,8 +15,9 @@ export const Route = createFileRoute('/api/public/buy')({
           const botUserId = await upsertBotUser({ id: tgId, first_name: body?.first_name, username: body?.username, language_code: body?.language });
 
           const { sendMessage } = await import('@/lib/telegram/gateway.server');
-          const { renderBuyNetworks } = await import('@/lib/telegram/router.server');
-          const view = await renderBuyNetworks(productId);
+          const { getUserLang, renderBuyNetworks } = await import('@/lib/telegram/router.server');
+          const lang = await getUserLang(botUserId);
+          const view = await renderBuyNetworks(productId, lang, botUserId);
           // navigation state set: we just send a fresh message so the bot picks up from there
           await sendMessage(tgId, view.text, { reply_markup: view.reply_markup });
 

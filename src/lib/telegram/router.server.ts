@@ -3,7 +3,7 @@ import {
   sendMessage, sendPhoto, deleteMessage, answerCallback, getMe, getFile, downloadFile,
   type InlineKeyboard,
 } from './gateway.server';
-import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji, premiumIdFor } from './emoji';
+import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
 import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavState, type RenderedView } from './navigation.server';
 import { LANGS, t, detect, type Lang } from './i18n';
 
@@ -77,13 +77,13 @@ export async function upsertBotUser(from: TgUser & { language_code?: string }, s
   return inserted.id as string;
 }
 
-async function getUserLang(botUserId: string): Promise<Lang> {
+export async function getUserLang(botUserId: string): Promise<Lang> {
   const { data } = await db().from('bot_users').select('language').eq('id', botUserId).maybeSingle();
   return detect((data as any)?.language);
 }
 
 async function setUserLang(botUserId: string, lang: Lang) {
-  await db().from('bot_users').update({ language: lang }).eq('id', botUserId);
+  await db().from('bot_users').update({ language: lang, last_active: new Date().toISOString() }).eq('id', botUserId);
 }
 
 async function getSettings() {
@@ -135,10 +135,10 @@ async function renderHome(name?: string, lang: Lang = 'en'): Promise<RenderedVie
 }
 
 async function renderLanguage(lang: Lang): Promise<RenderedView> {
-  const languagePremiumId = await premiumIdFor('menu_lang');
-  const rows: InlineKeyboard['inline_keyboard'] = await Promise.all(
-    LANGS.map(async (L) => [await mkEmojiBtn(L.flag || '🌐', `${L.name}${L.code === lang ? '  ✓' : ''}`, { callback_data: `lang:${L.code}` }, languagePremiumId)]),
-  );
+  const rows: InlineKeyboard['inline_keyboard'] = LANGS.map((L) => [{
+    text: `${L.flag}  ${L.name}${L.code === lang ? '  ✓' : ''}`,
+    callback_data: `lang:${L.code}`,
+  }]);
   rows.push(await navRow(lang));
   return {
     text: `${await e('menu_lang', '🌐')}  <b>${t(lang, 'language')}</b>\n\n${t(lang, 'choose_lang')}`,
