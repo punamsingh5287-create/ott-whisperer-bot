@@ -92,7 +92,7 @@ async function getSettings() {
 }
 
 /* ─── menus ───────────────────────────────────────────────────── */
-const MINI_APP_URL = process.env.MINI_APP_URL || 'https://project--0e9ed495-46e4-42a2-801a-3588d25b626e-dev.lovable.app/api/public/app';
+const MINI_APP_URL = process.env.MINI_APP_URL || 'https://ott-whisperer-bot.lovable.app/api/public/app';
 
 async function mainMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
   const [openApp, cats, search, orders, profile, wallet, ref, support, langBtn, close] = await Promise.all([
@@ -211,10 +211,18 @@ async function captureDepositProof(chatId: number, botUserId: string, opts: { te
 // Premium button icons are added when Telegram supports them; gateway retries safely without icons otherwise.
 
 
-async function renderCategories(lang: Lang = 'en'): Promise<RenderedView> {
+let _catsCache: { at: number; rows: any[] } | null = null;
+async function getActiveCategories(): Promise<any[]> {
+  if (_catsCache && Date.now() - _catsCache.at < 30_000) return _catsCache.rows;
   const { data } = await db().from('categories')
     .select('id, name, slug, icon_emoji, premium_emoji_id').eq('is_active', true).order('sort_order');
-  const cats = data ?? [];
+  _catsCache = { at: Date.now(), rows: data ?? [] };
+  return _catsCache.rows;
+}
+
+async function renderCategories(lang: Lang = 'en'): Promise<RenderedView> {
+  const cats = await getActiveCategories();
+
   const categoryLines = await Promise.all(cats.map(async (c: any) => (
     `${await categoryEmoji(c)} <b>${escapeHtml(c.name)}</b>`
   )));
