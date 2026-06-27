@@ -820,10 +820,23 @@ export async function handleCallback(cb: any) {
   }
   if (data.startsWith('paid:')) {
     const lang = await getUserLang(botUserId);
+    const paymentId = data.slice(5);
+    // Guard expiry — expired payments can never be confirmed
+    const { data: pay } = await db().from('payments')
+      .select('status, expires_at').eq('id', paymentId).maybeSingle();
+    const expired = !pay || pay.status === 'expired' ||
+      (pay.status === 'pending' && new Date(pay.expires_at).getTime() < Date.now());
+    if (expired) {
+      await answerCallback(cb.id, t(lang, 'payment_expired_title'), true);
+      await setFlowAction(botUserId, null);
+      void sweepExpiredPayments();
+      await sendMessage(chatId, t(lang, 'payment_expired_body'), { reply_markup: await backMenu(lang) });
+      return;
+    }
     await answerCallback(cb.id, t(lang, 'send_proof_now'));
     const currentPayment = await getFlowAction<Record<string, unknown>>(botUserId);
-    await setFlowAction(botUserId, { ...(currentPayment ?? {}), type: 'payment_proof', payment_id: data.slice(5) });
-    await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'proof', params: { paymentId: data.slice(5) } }, replace: true });
+    await setFlowAction(botUserId, { ...(currentPayment ?? {}), type: 'payment_proof', payment_id: paymentId });
+    await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'proof', params: { paymentId } }, replace: true });
     return;
   }
   await answerCallback(cb.id);
