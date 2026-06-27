@@ -645,13 +645,18 @@ async function capturePaymentProof(
       }
     } catch (e) { console.error('proof upload failed', e); }
   }
-  await supabase.rpc('submit_payment_proof', {
+  const { data: rpcResult } = await supabase.rpc('submit_payment_proof', {
     _payment_id: paymentId,
     _tx_hash: opts.text ?? null,
     _screenshot_url: screenshotUrl,
   });
-  await setFlowAction(botUserId, null);
   const lang = await getUserLang(botUserId);
+  if (rpcResult === 'expired') {
+    await setFlowAction(botUserId, null);
+    await sendMessage(chatId, t(lang, 'payment_expired_body'), { reply_markup: await backMenu(lang) });
+    return;
+  }
+  await setFlowAction(botUserId, null);
   const edited = await navigateTo({ botUserId, chatId, state: { screen: 'payment_review' }, replace: true });
   if (!edited) {
     await sendMessage(chatId,
