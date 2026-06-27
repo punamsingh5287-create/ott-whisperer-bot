@@ -55,6 +55,12 @@ export async function eb(key: string, fallback = '✨'): Promise<string> {
   return m[key]?.fallback_emoji ?? fallback;
 }
 
+/** Premium custom emoji ID for a preset, without using its admin label. */
+export async function premiumIdFor(key: string): Promise<string | null> {
+  const { map: m, defaultPremiumId } = await load();
+  return cleanPremiumId(m[key]?.premium_emoji_id || defaultPremiumId);
+}
+
 /** Render dynamic emoji values (products/categories) with the global premium fallback when needed. */
 export async function premiumEmoji(premiumId?: string | null, fallback = '✨'): Promise<string> {
   const { defaultPremiumId } = await load();
