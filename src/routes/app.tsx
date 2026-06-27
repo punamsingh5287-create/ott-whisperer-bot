@@ -16,38 +16,7 @@ export const Route = createFileRoute('/app')({
 type Category = { id: string; name: string; icon_emoji?: string | null; premium_emoji_id?: string | null; sort_order?: number | null };
 type Product = { id: string; name: string; description?: string | null; price: number; duration_days?: number | null; stock?: number | null; image_url?: string | null; category_id: string | null };
 
-const SPLASH_URL = '/__l5e/assets-v1/5186d4c0-13a2-486e-b26f-49d284ff121a/nexra-splash.png';
-
-function Splash({ onDone }: { onDone: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onDone, 3000);
-    return () => clearTimeout(t);
-  }, [onDone]);
-  return (
-    <>
-      <style>{`
-        @keyframes nexIn{0%{opacity:0;transform:scale(.9)}100%{opacity:1;transform:scale(1)}}
-        @keyframes nexFloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-6px) scale(1.005)}}
-        @keyframes nexGlow{0%,100%{filter:drop-shadow(0 0 0 rgba(120,190,255,0))}50%{filter:drop-shadow(0 0 28px rgba(120,190,255,.45))}}
-        @keyframes nexStreak{0%{transform:translateX(0)}100%{transform:translateX(240%)}}
-        .nex-splash{position:fixed;inset:0;z-index:50;background:#000;overflow:hidden;transition:opacity .8s ease-in-out}
-        .nex-splash::before{content:"";position:absolute;left:50%;top:-20%;width:120%;height:80%;transform:translateX(-50%);background:radial-gradient(ellipse at center,rgba(80,150,255,.35),rgba(20,60,140,.12) 40%,transparent 70%)}
-        .nex-streak{position:absolute;left:-40%;width:60%;height:1px;background:linear-gradient(90deg,transparent,rgba(120,190,255,.55),transparent);animation:nexStreak 7s linear infinite}
-        .nex-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transform:scale(.9);animation:nexIn 1500ms cubic-bezier(.4,0,.2,1) forwards,nexFloat 6s ease-in-out 1500ms infinite,nexGlow 2s ease-in-out 1500ms infinite}
-      `}</style>
-      <div className="nex-splash">
-        <div className="nex-streak" style={{ top: '22%' }} />
-        <div className="nex-streak" style={{ top: '42%', animationDuration: '9s', animationDelay: '-3s', opacity: 0.4 }} />
-        <div className="nex-streak" style={{ top: '64%', animationDuration: '11s', animationDelay: '-6s', opacity: 0.35 }} />
-        <div className="nex-streak" style={{ top: '80%', animationDuration: '8s', animationDelay: '-1.5s', opacity: 0.3 }} />
-        <img className="nex-img" src={SPLASH_URL} alt="NEXRA OTT" />
-      </div>
-    </>
-  );
-}
-
 function MiniApp() {
-  const [introDone, setIntroDone] = useState(false);
   const [data, setData] = useState<{ categories: Category[]; products: Product[] } | null>(null);
   const [catId, setCatId] = useState<string | 'all'>('all');
   const [q, setQ] = useState('');
@@ -80,8 +49,6 @@ function MiniApp() {
 
   return (
     <div className="min-h-screen text-white" style={{ background: 'radial-gradient(1200px 600px at 50% -10%, #1a0b3d 0%, #05010f 60%, #000 100%)' }}>
-      {!introDone && <Splash onDone={() => setIntroDone(true)} />}
-
       <div className="max-w-3xl mx-auto px-4 pt-6 pb-24">
         <header className="flex items-center justify-between mb-5">
           <div>
