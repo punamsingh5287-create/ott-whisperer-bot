@@ -745,6 +745,7 @@ export async function handleMessage(message: any) {
 
 export async function handleCallback(cb: any) {
   if (!cb?.from?.id || !cb?.message?.chat?.id) return;
+  void sweepExpiredPayments();
   const chatId = cb.message.chat.id;
   const messageId = cb.message.message_id;
   const data: string = cb.data ?? '';
