@@ -10,13 +10,13 @@ export const Route = createFileRoute('/api/public/buy')({
         if (!tgId || !productId) return Response.json({ error: 'tg_id and product_id required' }, { status: 400 });
 
         try {
-          const { upsertBotUser } = await import('@/lib/telegram/router.server');
+          const { getUserLang, renderBuyNetworks, upsertBotUser } = await import('@/lib/telegram/router.server');
           // Ensure user row exists
           const botUserId = await upsertBotUser({ id: tgId, first_name: body?.first_name, username: body?.username, language_code: body?.language });
 
           const { sendMessage } = await import('@/lib/telegram/gateway.server');
-          const { renderBuyNetworks } = await import('@/lib/telegram/router.server');
-          const view = await renderBuyNetworks(productId);
+          const lang = await getUserLang(botUserId);
+          const view = await renderBuyNetworks(productId, lang, botUserId);
           // navigation state set: we just send a fresh message so the bot picks up from there
           await sendMessage(tgId, view.text, { reply_markup: view.reply_markup });
 
