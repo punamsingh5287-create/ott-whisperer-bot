@@ -45,6 +45,28 @@ function stripButtonCustomEmoji(value: unknown): unknown {
   return out;
 }
 
+const LANGUAGE_BUTTON_TEXT: Record<string, string> = {
+  en: '🇬🇧  English',
+  ru: '🇷🇺  Русский',
+  zh: '🇨🇳  中文',
+  pl: '🇵🇱  Polski',
+  vi: '🇻🇳  Tiếng Việt',
+};
+
+function normalizeButton(value: Record<string, unknown>): Record<string, unknown> {
+  const callbackData = typeof value.callback_data === 'string' ? value.callback_data : '';
+  if (!callbackData.startsWith('lang:')) return value;
+
+  const langCode = callbackData.slice(5);
+  const fixedText = LANGUAGE_BUTTON_TEXT[langCode];
+  if (!fixedText) return value;
+
+  const currentText = typeof value.text === 'string' ? value.text : '';
+  const selected = currentText.includes('✓') ? '  ✓' : '';
+  const { icon_custom_emoji_id: _icon, _fallback_text: _fallback, ...button } = value;
+  return { ...button, text: `${fixedText}${selected}` };
+}
+
 function stripInternalButtonFields(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(stripInternalButtonFields);
   if (!value || typeof value !== 'object') return value;
@@ -53,7 +75,7 @@ function stripInternalButtonFields(value: unknown): unknown {
     if (key === '_fallback_text') continue;
     out[key] = stripInternalButtonFields(child);
   }
-  return out;
+  return normalizeButton(out);
 }
 
 function bodyHasButtonCustomEmoji(body: Record<string, unknown>): boolean {
