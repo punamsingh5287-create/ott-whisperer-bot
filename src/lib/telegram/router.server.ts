@@ -336,23 +336,33 @@ async function renderPayment(productId: string, network: Network, botUserId: str
 
   let row: any = null;
   let wallet: any = null;
+  let expiresAt: string | null = null;
 
   if (activePayment?.type === 'payment_proof' && activePayment.payment_id && activePayment.product_id === productId && activePayment.network === network) {
     const { data: payment } = await supabase.from('payments')
-      .select('id, amount, network, order_id, wallet_id')
+      .select('id, amount, network, order_id, wallet_id, status, expires_at')
       .eq('id', activePayment.payment_id).maybeSingle();
-    if (payment) {
+    // Only reuse if still pending AND not past expiry
+    if (payment && payment.status === 'pending' && new Date(payment.expires_at).getTime() > Date.now()) {
       const [{ data: order }, { data: savedWallet }] = await Promise.all([
         supabase.from('orders').select('id, products(name)').eq('id', payment.order_id).maybeSingle(),
         supabase.from('wallets').select('id, address, qr_url, label').eq('id', payment.wallet_id).maybeSingle(),
       ]);
       wallet = savedWallet;
+      expiresAt = payment.expires_at;
       row = {
         payment_id: payment.id,
         order_id: payment.order_id,
         product_name: (order as any)?.products?.name ?? t(lang, 'product'),
         amount: payment.amount,
       };
+    } else if (payment) {
+      // Stale or expired — clear it and fall through to create a new one
+      if (payment.status === 'pending') {
+        await supabase.from('payments').update({ status: 'expired' }).eq('id', payment.id);
+        await supabase.from('orders').update({ status: 'cancelled' }).eq('id', payment.order_id);
+      }
+      await setFlowAction(botUserId, null);
     }
   }
 
@@ -374,6 +384,9 @@ async function renderPayment(productId: string, network: Network, botUserId: str
       if (cbId) await answerCallback(cbId, msg, true);
       return { text: `${await e('status_error', '⚠️')} ${escapeHtml(msg)}`, reply_markup: await backMenu(lang) };
     }
+    const { data: created } = await supabase.from('payments')
+      .select('expires_at').eq('id', row.payment_id).maybeSingle();
+    expiresAt = (created as any)?.expires_at ?? new Date(Date.now() + 5 * 60 * 1000).toISOString();
     if (cbId) await answerCallback(cbId, t(lang, 'order_created'));
     await setFlowAction(botUserId, {
       type: 'payment_proof',
@@ -381,18 +394,25 @@ async function renderPayment(productId: string, network: Network, botUserId: str
       order_id: row.order_id,
       product_id: productId,
       network,
+      expires_at: expiresAt,
     });
+    // Best-effort timed expiry: also covered by sweep on next interaction.
+    scheduleExpiryNotification(row.payment_id);
   }
   if (!wallet) return { text: `${await e('status_error', '⚠️')} ${t(lang, 'no_wallet_net')}`, reply_markup: await backMenu(lang) };
 
   const pending = await e('status_pending', '⏳');
   const qrLine = wallet.qr_url ? `\nQR: ${escapeHtml(wallet.qr_url)}\n` : '\n';
+  const remainingMs = expiresAt ? Math.max(0, new Date(expiresAt).getTime() - Date.now()) : 5 * 60 * 1000;
+  const remainingMin = Math.ceil(remainingMs / 60000);
+  const expiryLine = `⏰ <b>${t(lang, 'expires_in')}</b>: ${remainingMin} ${t(lang, 'minutes_short')}\n`;
   const text =
     `${pending}  <b>${t(lang, 'pay_instructions')}</b>\n\n` +
     `${t(lang, 'product')}: <b>${escapeHtml(row.product_name)}</b>\n` +
     `${t(lang, 'order')}: <code>${String(row.order_id).slice(0, 8)}</code>\n` +
     `${t(lang, 'network')}: <b>${NETWORK_LABEL[network]}</b>\n` +
-    `${t(lang, 'amount')}: <b>$${row.amount}</b>\n\n` +
+    `${t(lang, 'amount')}: <b>$${row.amount}</b>\n` +
+    `${expiryLine}\n` +
     `${t(lang, 'send_exact')}\n<code>${escapeHtml(wallet.address)}</code>${qrLine}\n` +
     `${t(lang, 'then_reply')}`;
   const kb: InlineKeyboard = {
@@ -403,6 +423,29 @@ async function renderPayment(productId: string, network: Network, botUserId: str
   };
   return { text, reply_markup: kb };
 }
+
+/* ─── payment expiry helpers ───────────────────────────────────── */
+async function sweepExpiredPayments(): Promise<void> {
+  try {
+    const { data, error } = await db().rpc('expire_stale_payments');
+    if (error || !Array.isArray(data)) return;
+    for (const r of data as any[]) {
+      if (!r?.telegram_id) continue;
+      const lang = detect(r.language);
+      const productLine = r.product_name ? `\n<b>${escapeHtml(String(r.product_name))}</b> — $${r.amount}` : '';
+      try {
+        await sendMessage(r.telegram_id, `${t(lang, 'payment_expired_body')}${productLine}`);
+      } catch (err) { console.error('expire notify failed', err); }
+    }
+  } catch (err) { console.error('sweep failed', err); }
+}
+
+function scheduleExpiryNotification(_paymentId: string) {
+  // Serverless workers may not keep timers alive; the sweep on next webhook
+  // call is the source of truth. Best-effort timer for long-lived runtimes:
+  setTimeout(() => { void sweepExpiredPayments(); }, 5 * 60 * 1000 + 2000);
+}
+
 
 /* ─── orders / profile / referrals / support / search ────────── */
 async function renderOrders(botUserId: string, lang: Lang = 'en'): Promise<RenderedView> {
@@ -602,13 +645,18 @@ async function capturePaymentProof(
       }
     } catch (e) { console.error('proof upload failed', e); }
   }
-  await supabase.rpc('submit_payment_proof', {
+  const { data: rpcResult } = await supabase.rpc('submit_payment_proof', {
     _payment_id: paymentId,
     _tx_hash: opts.text ?? null,
     _screenshot_url: screenshotUrl,
   });
-  await setFlowAction(botUserId, null);
   const lang = await getUserLang(botUserId);
+  if (rpcResult === 'expired') {
+    await setFlowAction(botUserId, null);
+    await sendMessage(chatId, t(lang, 'payment_expired_body'), { reply_markup: await backMenu(lang) });
+    return;
+  }
+  await setFlowAction(botUserId, null);
   const edited = await navigateTo({ botUserId, chatId, state: { screen: 'payment_review' }, replace: true });
   if (!edited) {
     await sendMessage(chatId,
@@ -620,6 +668,7 @@ async function capturePaymentProof(
 /* ─── entry points ────────────────────────────────────────────── */
 export async function handleMessage(message: any) {
   if (!message?.from?.id || !message?.chat?.id) return;
+  void sweepExpiredPayments();
   const chatId = message.chat.id;
   const text: string = message.text ?? message.caption ?? '';
   const startPayload = text.startsWith('/start') ? text.split(' ')[1] : undefined;
@@ -696,6 +745,7 @@ export async function handleMessage(message: any) {
 
 export async function handleCallback(cb: any) {
   if (!cb?.from?.id || !cb?.message?.chat?.id) return;
+  void sweepExpiredPayments();
   const chatId = cb.message.chat.id;
   const messageId = cb.message.message_id;
   const data: string = cb.data ?? '';
@@ -770,10 +820,23 @@ export async function handleCallback(cb: any) {
   }
   if (data.startsWith('paid:')) {
     const lang = await getUserLang(botUserId);
+    const paymentId = data.slice(5);
+    // Guard expiry — expired payments can never be confirmed
+    const { data: pay } = await db().from('payments')
+      .select('status, expires_at').eq('id', paymentId).maybeSingle();
+    const expired = !pay || pay.status === 'expired' ||
+      (pay.status === 'pending' && new Date(pay.expires_at).getTime() < Date.now());
+    if (expired) {
+      await answerCallback(cb.id, t(lang, 'payment_expired_title'), true);
+      await setFlowAction(botUserId, null);
+      void sweepExpiredPayments();
+      await sendMessage(chatId, t(lang, 'payment_expired_body'), { reply_markup: await backMenu(lang) });
+      return;
+    }
     await answerCallback(cb.id, t(lang, 'send_proof_now'));
     const currentPayment = await getFlowAction<Record<string, unknown>>(botUserId);
-    await setFlowAction(botUserId, { ...(currentPayment ?? {}), type: 'payment_proof', payment_id: data.slice(5) });
-    await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'proof', params: { paymentId: data.slice(5) } }, replace: true });
+    await setFlowAction(botUserId, { ...(currentPayment ?? {}), type: 'payment_proof', payment_id: paymentId });
+    await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'proof', params: { paymentId } }, replace: true });
     return;
   }
   await answerCallback(cb.id);

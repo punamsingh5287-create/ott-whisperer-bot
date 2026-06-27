@@ -325,6 +325,7 @@ export type Database = {
           amount: number
           bot_user_id: string | null
           created_at: string
+          expires_at: string
           id: string
           network: Database["public"]["Enums"]["wallet_network"]
           order_id: string | null
@@ -341,6 +342,7 @@ export type Database = {
           amount: number
           bot_user_id?: string | null
           created_at?: string
+          expires_at?: string
           id?: string
           network: Database["public"]["Enums"]["wallet_network"]
           order_id?: string | null
@@ -357,6 +359,7 @@ export type Database = {
           amount?: number
           bot_user_id?: string | null
           created_at?: string
+          expires_at?: string
           id?: string
           network?: Database["public"]["Enums"]["wallet_network"]
           order_id?: string | null
@@ -810,6 +813,17 @@ export type Database = {
           wallet_address: string
         }[]
       }
+      expire_stale_payments: {
+        Args: never
+        Returns: {
+          amount: number
+          language: string
+          order_id: string
+          payment_id: string
+          product_name: string
+          telegram_id: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -842,7 +856,7 @@ export type Database = {
       }
       submit_payment_proof: {
         Args: { _payment_id: string; _screenshot_url: string; _tx_hash: string }
-        Returns: undefined
+        Returns: string
       }
     }
     Enums: {

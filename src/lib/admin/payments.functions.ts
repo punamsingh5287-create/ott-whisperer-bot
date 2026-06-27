@@ -81,10 +81,13 @@ export const reviewPayment = createServerFn({ method: 'POST' })
     await assertAdmin(context);
     const note = data.note ?? '';
     if (data.action === 'approve') {
-      const { error } = await context.supabase.rpc('approve_payment', {
+      const { data: res, error } = await context.supabase.rpc('approve_payment', {
         _payment_id: data.id, _admin_id: context.userId, _note: note,
       });
       if (error) throw error;
+      const row: any = Array.isArray(res) ? res[0] : res;
+      if (row?.error === 'expired') throw new Error('Payment expired — cannot approve.');
+      if (row?.error === 'payment_not_found') throw new Error('Payment not found.');
     } else {
       const { error } = await context.supabase.rpc('reject_payment', {
         _payment_id: data.id, _admin_id: context.userId, _note: note,
