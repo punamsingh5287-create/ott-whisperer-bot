@@ -102,11 +102,11 @@ export async function getFlowAction<T extends Record<string, unknown>>(botUserId
 }
 
 export async function showView(args: ShowViewArgs): Promise<boolean> {
-  const pending = await readPending(args.botUserId);
+  const [pending, view] = await Promise.all([
+    readPending(args.botUserId),
+    args.renderView(args.state),
+  ]);
   const existing = pending.nav;
-  const view = await args.renderView(args.state);
-  // Prefer the message the user just interacted with — it's always editable
-  // and ensures we stay on a single bubble even if a stale message_id is cached.
   const targetMessageId = args.messageId ?? existing?.message_id;
   const messageKind = isMediaMessage(args.callbackMessage) ? 'media' : (existing?.message_kind ?? 'text');
 
@@ -135,17 +135,17 @@ export async function showView(args: ShowViewArgs): Promise<boolean> {
         ? [...(existing.stack ?? []), existing.current].slice(-25)
         : (existing?.stack ?? []);
 
-  const latestPending = await readPending(args.botUserId);
-  latestPending.nav = {
+  pending.nav = {
     chat_id: args.chatId,
     message_id: savedMessageId,
     message_kind: savedKind,
     current: args.state,
     stack,
   };
-  await writePending(args.botUserId, latestPending);
+  await writePending(args.botUserId, pending);
   return true;
 }
+
 
 export async function goBack(args: Omit<ShowViewArgs, 'state'> & { fallback: NavState }): Promise<boolean> {
   const pending = await readPending(args.botUserId);
