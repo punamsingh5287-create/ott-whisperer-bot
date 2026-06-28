@@ -8,17 +8,13 @@ import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavStat
 import { LANGS, t, detect, type Lang } from './i18n';
 
 async function sendStartMenu(chatId: number, botUserId: string, name?: string) {
-  // Send the home view with remove_keyboard merged into reply_markup so any
-  // previously-set persistent keyboard is cleared in the same message.
-  const lang = await getUserLang(botUserId);
-  const view = await renderHome(name, lang);
-  const sent = await sendMessage(chatId, view.text, {
-    reply_markup: { ...(view.reply_markup as any), remove_keyboard: true },
-  });
-  if (!sent?.ok) {
-    await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
-  }
+  // Clear any stale persistent reply keyboard, then show the home inline view.
+  // Telegram requires non-empty text and rejects mixing inline + remove keyboards,
+  // so we send a tiny standalone "Home" message that also removes the keyboard.
+  await sendMessage(chatId, '🏠', { reply_markup: { remove_keyboard: true } as any }).catch(() => {});
+  await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
 }
+
 
 
 
