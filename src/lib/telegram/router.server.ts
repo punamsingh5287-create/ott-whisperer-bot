@@ -128,7 +128,7 @@ async function renderHome(name?: string, lang: Lang = 'en'): Promise<RenderedVie
   const welcome = await e('welcome', '✨');
   const greet = name ? `, <b>${escapeHtml(name)}</b>` : '';
   const text =
-    `${welcome}  <b>${escapeHtml(s.site_name || s.bot_name || 'OTT & AI Store')}</b>\n\n` +
+    `${welcome}  <b>${escapeHtml((s as any).site_name || (s as any).bot_name || 'OTT & AI Store')}</b>\n\n` +
     `${t(lang, 'hey')}${greet}! ${escapeHtml(s.welcome_text || '')}\n\n` +
     `${t(lang, 'browse')}`;
   return { text, reply_markup: await mainMenu(lang) };
@@ -351,8 +351,8 @@ async function renderPayment(productId: string, network: Network, botUserId: str
     // Only reuse if still pending AND not past expiry
     if (payment && payment.status === 'pending' && new Date(payment.expires_at).getTime() > Date.now()) {
       const [{ data: order }, { data: savedWallet }] = await Promise.all([
-        supabase.from('orders').select('id, products(name)').eq('id', payment.order_id).maybeSingle(),
-        supabase.from('wallets').select('id, address, qr_url, label').eq('id', payment.wallet_id).maybeSingle(),
+        supabase.from('orders').select('id, products(name)').eq('id', String(payment.order_id)).maybeSingle(),
+        supabase.from('wallets').select('id, address, qr_url, label').eq('id', String(payment.wallet_id)).maybeSingle(),
       ]);
       wallet = savedWallet;
       expiresAt = payment.expires_at;
@@ -366,7 +366,7 @@ async function renderPayment(productId: string, network: Network, botUserId: str
       // Stale or expired — clear it and fall through to create a new one
       if (payment.status === 'pending') {
         await supabase.from('payments').update({ status: 'expired' }).eq('id', payment.id);
-        await supabase.from('orders').update({ status: 'cancelled' }).eq('id', payment.order_id);
+        await supabase.from('orders').update({ status: 'cancelled' }).eq('id', String(payment.order_id));
       }
       await setFlowAction(botUserId, null);
     }
@@ -661,8 +661,8 @@ async function capturePaymentProof(
   }
   const { data: rpcResult } = await supabase.rpc('submit_payment_proof', {
     _payment_id: paymentId,
-    _tx_hash: opts.text ?? null,
-    _screenshot_url: screenshotUrl,
+    _tx_hash: opts.text ?? '',
+    _screenshot_url: screenshotUrl ?? '',
   });
   const lang = await getUserLang(botUserId);
   if (rpcResult === 'expired') {
