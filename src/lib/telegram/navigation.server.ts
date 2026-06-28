@@ -77,7 +77,7 @@ async function readPending(botUserId: string): Promise<PendingState> {
 
 async function writePending(botUserId: string, pending: PendingState) {
   pendingCache.set(botUserId, { value: pending, expires: Date.now() + PENDING_TTL_MS });
-  const { error } = await db().from('bot_users').update({ pending_action: pending }).eq('id', botUserId);
+  const { error } = await db().from('bot_users').update({ pending_action: pending as any }).eq('id', botUserId);
   if (error) console.error('writePending', error);
 }
 
