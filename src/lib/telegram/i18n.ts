@@ -27,7 +27,6 @@ const D: Record<string, Record<Lang, string>> = {
   back:           { en: 'Back', ru: 'Назад', zh: '返回', pl: 'Wstecz', vi: 'Quay lại' },
   home:           { en: 'Home', ru: 'Главная', zh: '首页', pl: 'Strona główna', vi: 'Trang chính' },
   wallet:         { en: 'Wallet', ru: 'Кошелёк', zh: '钱包', pl: 'Portfel', vi: 'Ví' },
-  wallet:         { en: 'Wallet', ru: 'Кошелёк', zh: '钱包', pl: 'Portfel', vi: 'Ví' },
   language:       { en: 'Language', ru: 'Язык', zh: '语言', pl: 'Język', vi: 'Ngôn ngữ' },
   choose_lang:    { en: 'Choose your language', ru: 'Выберите язык', zh: '选择语言', pl: 'Wybierz język', vi: 'Chọn ngôn ngữ' },
   lang_saved:     { en: '✅ Language updated', ru: '✅ Язык обновлён', zh: '✅ 语言已更新', pl: '✅ Język zaktualizowany', vi: '✅ Đã cập nhật' },
