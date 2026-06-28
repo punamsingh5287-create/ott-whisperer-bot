@@ -753,12 +753,6 @@ export async function handleMessage(message: any) {
     else await navigateTo({ botUserId, chatId, state: { screen: 'search' }, forceNewMessage: true });
     return;
   }
-  // Persistent reply-keyboard buttons
-  const replyHit = matchReplyButton(text);
-  if (replyHit) {
-    await navigateTo({ botUserId, chatId, state: replyHit, name: message.from.first_name, reset: replyHit.screen === 'home', forceNewMessage: true });
-    return;
-  }
   await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true });
 }
 
