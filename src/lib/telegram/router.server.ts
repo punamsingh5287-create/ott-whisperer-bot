@@ -131,10 +131,9 @@ async function backMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
 /* ─── views ───────────────────────────────────────────────────── */
 async function renderHome(name?: string, lang: Lang = 'en'): Promise<RenderedView> {
   const s = await getSettings();
-  const welcome = await e('welcome', '✨');
   const greet = name ? `, <b>${escapeHtml(name)}</b>` : '';
   const text =
-    `${welcome}  <b>${escapeHtml((s as any).site_name || (s as any).bot_name || 'OTT & AI Store')}</b>\n\n` +
+    `<b>${escapeHtml((s as any).site_name || (s as any).bot_name || 'OTT & AI Store')}</b>\n\n` +
     `${t(lang, 'hey')}${greet}! ${escapeHtml(s.welcome_text || '')}\n\n` +
     `${t(lang, 'browse')}`;
   return { text, reply_markup: await mainMenu(lang) };
