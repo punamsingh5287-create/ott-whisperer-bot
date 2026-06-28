@@ -805,9 +805,9 @@ export async function handleCallback(cb: any) {
   const data: string = cb.data ?? '';
   const botUserId = await upsertBotUser(cb.from);
 
-  if (data === 'nav:close') { await answerCallback(cb.id); await closeView(botUserId, chatId, messageId); return; }
+  if (data === 'nav:close') { bg(answerCallback(cb.id)); await closeView(botUserId, chatId, messageId); return; }
   if (data === 'nav:back') {
-    await answerCallback(cb.id);
+    bg(answerCallback(cb.id));
     await goBack({
       botUserId,
       chatId,
@@ -818,32 +818,32 @@ export async function handleCallback(cb: any) {
     });
     return;
   }
-  if (data === 'menu:home') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'home' }, name: cb.from.first_name, reset: true }); return; }
-  if (data === 'menu:cats') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'categories' } }); return; }
-  if (data === 'menu:search') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'search' } }); return; }
-  if (data === 'menu:orders') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'orders' } }); return; }
-  if (data === 'menu:profile') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'profile' } }); return; }
-  if (data === 'menu:ref') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'referrals' } }); return; }
-  if (data === 'menu:support') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'support' } }); return; }
-  if (data === 'menu:wallet') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'wallet' } }); return; }
-  if (data === 'menu:lang') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'language' } }); return; }
+  if (data === 'menu:home') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'home' }, name: cb.from.first_name, reset: true }); return; }
+  if (data === 'menu:cats') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'categories' } }); return; }
+  if (data === 'menu:search') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'search' } }); return; }
+  if (data === 'menu:orders') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'orders' } }); return; }
+  if (data === 'menu:profile') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'profile' } }); return; }
+  if (data === 'menu:ref') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'referrals' } }); return; }
+  if (data === 'menu:support') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'support' } }); return; }
+  if (data === 'menu:wallet') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'wallet' } }); return; }
+  if (data === 'menu:lang') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'language' } }); return; }
   if (data.startsWith('lang:')) {
     const newLang = detect(data.slice(5));
     await setUserLang(botUserId, newLang);
-    await answerCallback(cb.id, t(newLang, 'lang_saved'));
+    bg(answerCallback(cb.id, t(newLang, 'lang_saved')));
     await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'home' }, name: cb.from.first_name, reset: true });
     return;
   }
   if (data === 'wallet:deposited') {
-    await answerCallback(cb.id);
+    bg(answerCallback(cb.id));
     await setFlowAction(botUserId, { type: 'deposit_proof' });
     await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'deposit_proof' }, replace: true });
     return;
   }
 
-  if (data.startsWith('cat:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'category', params: { categoryId: data.slice(4) } } }); return; }
-  if (data.startsWith('prod:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'product', params: { productId: data.slice(5) } } }); return; }
-  if (data.startsWith('buy:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'buy', params: { productId: data.slice(4) } } }); return; }
+  if (data.startsWith('cat:')) { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'category', params: { categoryId: data.slice(4) } } }); return; }
+  if (data.startsWith('prod:')) { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'product', params: { productId: data.slice(5) } } }); return; }
+  if (data.startsWith('buy:')) { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'buy', params: { productId: data.slice(4) } } }); return; }
   if (data.startsWith('wpay:')) {
     const lang = await getUserLang(botUserId);
     const productId = data.slice(5);
@@ -857,7 +857,7 @@ export async function handleCallback(cb: any) {
       await answerCallback(cb.id, msg, true);
       return;
     }
-    await answerCallback(cb.id, t(lang, 'payment_approved'));
+    bg(answerCallback(cb.id, t(lang, 'payment_approved')));
     await sendMessage(chatId,
       `${await e('status_success', '🎉')} <b>${t(lang, 'payment_approved')}</b>\n\n` +
       `${escapeHtml(row.product_name)} — $${row.amount}\n` +
@@ -868,7 +868,7 @@ export async function handleCallback(cb: any) {
   }
   if (data.startsWith('pay:')) {
     const [, net, prodId] = data.split(':');
-    await answerCallback(cb.id);
+    bg(answerCallback(cb.id));
     await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'payment', params: { productId: prodId, network: net } } });
     return;
   }
@@ -887,13 +887,13 @@ export async function handleCallback(cb: any) {
       await sendMessage(chatId, t(lang, 'payment_expired_body'), { reply_markup: await backMenu(lang) });
       return;
     }
-    await answerCallback(cb.id, t(lang, 'send_proof_now'));
+    bg(answerCallback(cb.id, t(lang, 'send_proof_now')));
     const currentPayment = await getFlowAction<Record<string, unknown>>(botUserId);
     await setFlowAction(botUserId, { ...(currentPayment ?? {}), type: 'payment_proof', payment_id: paymentId });
     await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'proof', params: { paymentId } }, replace: true });
     return;
   }
-  await answerCallback(cb.id);
+  bg(answerCallback(cb.id));
 }
 
 /* ─── notify user when admin reviews payment ──────────────────── */
