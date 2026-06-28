@@ -118,7 +118,7 @@ async function mainMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
 
 async function navRow(lang: Lang = 'en', includeHome = true): Promise<InlineKeyboard['inline_keyboard'][number]> {
   const buttons = [await mkBtn('menu_back', '‹', t(lang, 'back'), { callback_data: 'nav:back' })];
-  if (includeHome) buttons.push(await mkBtn('menu_home', '⌂', t(lang, 'home'), { callback_data: 'menu:home' }));
+  if (includeHome) buttons.push({ text: t(lang, 'home'), callback_data: 'menu:home' });
   buttons.push(await mkBtn('menu_close', '✕', t(lang, 'close'), { callback_data: 'nav:close' }));
   return buttons;
 }
