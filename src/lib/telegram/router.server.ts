@@ -6,11 +6,16 @@ import {
 import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
 import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavState, type RenderedView } from './navigation.server';
 import { LANGS, t, detect, type Lang } from './i18n';
+import { runAfterResponse } from '@/lib/request-context';
+
+// Fire-and-forget helper — pushes work past the webhook response.
+function bg(p: Promise<unknown>) { runAfterResponse(p); }
 
 async function sendStartMenu(chatId: number, botUserId: string, name?: string) {
   // Navigate directly to home. Avoid sending any cleanup message to prevent flicker/bounce.
   await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
 }
+
 
 
 
