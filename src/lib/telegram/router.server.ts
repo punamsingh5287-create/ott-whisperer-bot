@@ -6,11 +6,16 @@ import {
 import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
 import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavState, type RenderedView } from './navigation.server';
 import { LANGS, t, detect, type Lang } from './i18n';
+import { runAfterResponse } from '@/lib/request-context';
+
+// Fire-and-forget helper — pushes work past the webhook response.
+function bg(p: Promise<unknown>) { runAfterResponse(p); }
 
 async function sendStartMenu(chatId: number, botUserId: string, name?: string) {
   // Navigate directly to home. Avoid sending any cleanup message to prevent flicker/bounce.
   await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
 }
+
 
 
 
@@ -47,15 +52,35 @@ async function productEmoji(p: any): Promise<string> {
 /* ─── user upsert ─────────────────────────────────────────────── */
 function genReferralCode(telegramId: number) { return `R${telegramId.toString(36).toUpperCase()}`; }
 
+/* ─── caches (isolate-local, warm-Worker friendly) ───────────── */
+// telegram_id → bot_users.id is stable for the lifetime of the user row.
+const _userIdCache = new Map<number, string>();
+// botUserId → language (TTL since user can change it from another device)
+const _langCache = new Map<string, { lang: Lang; expires: number }>();
+const LANG_TTL_MS = 60_000;
+// settings row is rarely edited
+let _settingsCache: { at: number; row: any } | null = null;
+const SETTINGS_TTL_MS = 60_000;
+
 export async function upsertBotUser(from: TgUser & { language_code?: string }, startPayload?: string): Promise<string> {
   const supabase = db();
+  const cachedId = _userIdCache.get(from.id);
+  if (cachedId) {
+    // Refresh activity in the background — never block the response.
+    bg(supabase.from('bot_users').update({
+      username: from.username ?? null, first_name: from.first_name ?? null,
+      last_active: new Date().toISOString(),
+    }).eq('telegram_id', from.id).then(() => undefined));
+    return cachedId;
+  }
   const { data: existing } = await supabase
     .from('bot_users').select('id').eq('telegram_id', from.id).maybeSingle();
   if (existing) {
-    await supabase.from('bot_users').update({
+    _userIdCache.set(from.id, existing.id as string);
+    bg(supabase.from('bot_users').update({
       username: from.username ?? null, first_name: from.first_name ?? null,
       last_active: new Date().toISOString(),
-    }).eq('telegram_id', from.id);
+    }).eq('telegram_id', from.id).then(() => undefined));
     return existing.id as string;
   }
   let referredBy: string | null = null;
@@ -69,27 +94,38 @@ export async function upsertBotUser(from: TgUser & { language_code?: string }, s
     language: detect(from.language_code),
   }).select('id').single();
   if (error) throw error;
+  _userIdCache.set(from.id, inserted.id as string);
   if (referredBy) {
-    await supabase.from('referrals').insert({
+    bg(supabase.from('referrals').insert({
       referrer_bot_user_id: referredBy, referred_bot_user_id: inserted.id,
-    });
+    }).then(() => undefined));
   }
   return inserted.id as string;
 }
 
 export async function getUserLang(botUserId: string): Promise<Lang> {
+  const now = Date.now();
+  const hit = _langCache.get(botUserId);
+  if (hit && hit.expires > now) return hit.lang;
   const { data } = await db().from('bot_users').select('language').eq('id', botUserId).maybeSingle();
-  return detect((data as any)?.language);
+  const lang = detect((data as any)?.language);
+  _langCache.set(botUserId, { lang, expires: now + LANG_TTL_MS });
+  return lang;
 }
 
 async function setUserLang(botUserId: string, lang: Lang) {
+  _langCache.set(botUserId, { lang, expires: Date.now() + LANG_TTL_MS });
   await db().from('bot_users').update({ language: lang, last_active: new Date().toISOString() }).eq('id', botUserId);
 }
 
 async function getSettings() {
+  if (_settingsCache && Date.now() - _settingsCache.at < SETTINGS_TTL_MS) return _settingsCache.row;
   const { data } = await db().from('settings').select('*').eq('id', 1).maybeSingle();
-  return data ?? { welcome_text: 'Welcome!', support_handle: '@support', site_name: 'OTT Store', bot_username: null };
+  const row = data ?? { welcome_text: 'Welcome!', support_handle: '@support', site_name: 'OTT Store', bot_username: null };
+  _settingsCache = { at: Date.now(), row };
+  return row;
 }
+
 
 /* ─── menus ───────────────────────────────────────────────────── */
 const MINI_APP_URL = process.env.MINI_APP_URL || 'https://ott-whisperer-bot.lovable.app/app';
@@ -769,9 +805,9 @@ export async function handleCallback(cb: any) {
   const data: string = cb.data ?? '';
   const botUserId = await upsertBotUser(cb.from);
 
-  if (data === 'nav:close') { await answerCallback(cb.id); await closeView(botUserId, chatId, messageId); return; }
+  if (data === 'nav:close') { bg(answerCallback(cb.id)); await closeView(botUserId, chatId, messageId); return; }
   if (data === 'nav:back') {
-    await answerCallback(cb.id);
+    bg(answerCallback(cb.id));
     await goBack({
       botUserId,
       chatId,
@@ -782,32 +818,32 @@ export async function handleCallback(cb: any) {
     });
     return;
   }
-  if (data === 'menu:home') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'home' }, name: cb.from.first_name, reset: true }); return; }
-  if (data === 'menu:cats') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'categories' } }); return; }
-  if (data === 'menu:search') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'search' } }); return; }
-  if (data === 'menu:orders') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'orders' } }); return; }
-  if (data === 'menu:profile') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'profile' } }); return; }
-  if (data === 'menu:ref') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'referrals' } }); return; }
-  if (data === 'menu:support') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'support' } }); return; }
-  if (data === 'menu:wallet') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'wallet' } }); return; }
-  if (data === 'menu:lang') { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'language' } }); return; }
+  if (data === 'menu:home') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'home' }, name: cb.from.first_name, reset: true }); return; }
+  if (data === 'menu:cats') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'categories' } }); return; }
+  if (data === 'menu:search') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'search' } }); return; }
+  if (data === 'menu:orders') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'orders' } }); return; }
+  if (data === 'menu:profile') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'profile' } }); return; }
+  if (data === 'menu:ref') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'referrals' } }); return; }
+  if (data === 'menu:support') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'support' } }); return; }
+  if (data === 'menu:wallet') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'wallet' } }); return; }
+  if (data === 'menu:lang') { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'language' } }); return; }
   if (data.startsWith('lang:')) {
     const newLang = detect(data.slice(5));
     await setUserLang(botUserId, newLang);
-    await answerCallback(cb.id, t(newLang, 'lang_saved'));
+    bg(answerCallback(cb.id, t(newLang, 'lang_saved')));
     await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'home' }, name: cb.from.first_name, reset: true });
     return;
   }
   if (data === 'wallet:deposited') {
-    await answerCallback(cb.id);
+    bg(answerCallback(cb.id));
     await setFlowAction(botUserId, { type: 'deposit_proof' });
     await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'deposit_proof' }, replace: true });
     return;
   }
 
-  if (data.startsWith('cat:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'category', params: { categoryId: data.slice(4) } } }); return; }
-  if (data.startsWith('prod:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'product', params: { productId: data.slice(5) } } }); return; }
-  if (data.startsWith('buy:')) { await answerCallback(cb.id); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'buy', params: { productId: data.slice(4) } } }); return; }
+  if (data.startsWith('cat:')) { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'category', params: { categoryId: data.slice(4) } } }); return; }
+  if (data.startsWith('prod:')) { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'product', params: { productId: data.slice(5) } } }); return; }
+  if (data.startsWith('buy:')) { bg(answerCallback(cb.id)); await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'buy', params: { productId: data.slice(4) } } }); return; }
   if (data.startsWith('wpay:')) {
     const lang = await getUserLang(botUserId);
     const productId = data.slice(5);
@@ -821,7 +857,7 @@ export async function handleCallback(cb: any) {
       await answerCallback(cb.id, msg, true);
       return;
     }
-    await answerCallback(cb.id, t(lang, 'payment_approved'));
+    bg(answerCallback(cb.id, t(lang, 'payment_approved')));
     await sendMessage(chatId,
       `${await e('status_success', '🎉')} <b>${t(lang, 'payment_approved')}</b>\n\n` +
       `${escapeHtml(row.product_name)} — $${row.amount}\n` +
@@ -832,7 +868,7 @@ export async function handleCallback(cb: any) {
   }
   if (data.startsWith('pay:')) {
     const [, net, prodId] = data.split(':');
-    await answerCallback(cb.id);
+    bg(answerCallback(cb.id));
     await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'payment', params: { productId: prodId, network: net } } });
     return;
   }
@@ -851,13 +887,13 @@ export async function handleCallback(cb: any) {
       await sendMessage(chatId, t(lang, 'payment_expired_body'), { reply_markup: await backMenu(lang) });
       return;
     }
-    await answerCallback(cb.id, t(lang, 'send_proof_now'));
+    bg(answerCallback(cb.id, t(lang, 'send_proof_now')));
     const currentPayment = await getFlowAction<Record<string, unknown>>(botUserId);
     await setFlowAction(botUserId, { ...(currentPayment ?? {}), type: 'payment_proof', payment_id: paymentId });
     await navigateTo({ botUserId, chatId, messageId, callbackMessage: cb.message, state: { screen: 'proof', params: { paymentId } }, replace: true });
     return;
   }
-  await answerCallback(cb.id);
+  bg(answerCallback(cb.id));
 }
 
 /* ─── notify user when admin reviews payment ──────────────────── */
