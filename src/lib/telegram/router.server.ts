@@ -8,16 +8,10 @@ import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavStat
 import { LANGS, t, detect, type Lang } from './i18n';
 
 async function sendStartMenu(chatId: number, botUserId: string, name?: string) {
-  await clearReplyKeyboard(chatId);
-  // Navigate directly to the home inline view after removing any old reply keyboard.
+  // Navigate directly to home. Avoid sending any cleanup message to prevent flicker/bounce.
   await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
 }
 
-async function clearReplyKeyboard(chatId: number) {
-  const cleanup = await sendMessage(chatId, '\u2063', { reply_markup: { remove_keyboard: true } });
-  const cleanupMessageId = cleanup?.result?.message_id;
-  if (cleanupMessageId) await deleteMessage(chatId, cleanupMessageId).catch(() => {});
-}
 
 
 
@@ -741,11 +735,10 @@ export async function handleMessage(message: any) {
   }
 
   if (text.startsWith('/start')) {
-    // Delete the user's /start command so the chat stays clean; only the welcome message remains.
-    if (message.message_id) await deleteMessage(chatId, message.message_id).catch(() => {});
     await sendStartMenu(chatId, botUserId, message.from.first_name);
     return;
   }
+
 
 
 
