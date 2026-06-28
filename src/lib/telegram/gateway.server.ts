@@ -121,7 +121,7 @@ export type InlineKeyboard = {
 
 export async function sendMessage(
   chatId: number, text: string,
-  opts: { reply_markup?: InlineKeyboard; disable_web_page_preview?: boolean } = {},
+  opts: { reply_markup?: InlineKeyboard | Record<string, any>; disable_web_page_preview?: boolean } = {},
 ) {
   return tgHtml('sendMessage', {
     chat_id: chatId, text, parse_mode: 'HTML',

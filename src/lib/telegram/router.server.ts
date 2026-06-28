@@ -16,6 +16,34 @@ async function sendStartMenu(chatId: number, botUserId: string, name?: string) {
   if (!photo?.ok) {
     await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
   }
+  // Persistent reply keyboard at the bottom (always visible quick menu)
+  await sendMessage(chatId, `⌨️ ${t(lang, 'browse').split('.')[0]}`, { reply_markup: replyKeyboard(lang) });
+}
+
+function replyKeyboard(lang: Lang) {
+  return {
+    keyboard: [
+      [{ text: `🗂 ${t(lang, 'categories')}` }, { text: `💰 ${t(lang, 'wallet')}` }],
+      [{ text: `🧾 ${t(lang, 'my_orders')}` }, { text: `💬 ${t(lang, 'support')}` }],
+      [{ text: `🏠 ${t(lang, 'home')}` }, { text: `🌐 ${t(lang, 'language')}` }],
+    ],
+    resize_keyboard: true,
+    is_persistent: true,
+  };
+}
+
+// Match localized reply-keyboard button text → screen
+function matchReplyButton(text: string): NavState | null {
+  const stripped = text.replace(/^[^\p{L}\p{N}]+/u, '').trim().toLowerCase();
+  for (const L of LANGS) {
+    if (stripped === t(L.code, 'categories').toLowerCase()) return { screen: 'categories' };
+    if (stripped === t(L.code, 'wallet').toLowerCase()) return { screen: 'wallet' };
+    if (stripped === t(L.code, 'my_orders').toLowerCase()) return { screen: 'orders' };
+    if (stripped === t(L.code, 'support').toLowerCase()) return { screen: 'support' };
+    if (stripped === t(L.code, 'home').toLowerCase()) return { screen: 'home' };
+    if (stripped === t(L.code, 'language').toLowerCase()) return { screen: 'language' };
+  }
+  return null;
 }
 
 
@@ -747,6 +775,12 @@ export async function handleMessage(message: any) {
     const q = text.slice(7).trim();
     if (q) await navigateTo({ botUserId, chatId, state: { screen: 'search_results', params: { query: q } }, forceNewMessage: true });
     else await navigateTo({ botUserId, chatId, state: { screen: 'search' }, forceNewMessage: true });
+    return;
+  }
+  // Persistent reply-keyboard buttons
+  const replyHit = matchReplyButton(text);
+  if (replyHit) {
+    await navigateTo({ botUserId, chatId, state: replyHit, name: message.from.first_name, reset: replyHit.screen === 'home', forceNewMessage: true });
     return;
   }
   await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true });
