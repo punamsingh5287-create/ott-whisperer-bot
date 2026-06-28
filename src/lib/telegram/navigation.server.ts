@@ -58,13 +58,30 @@ function ok(result: any): boolean {
   return description.includes('message is not modified');
 }
 
+// In-memory cache for pending_action — avoids a DB read on every callback/message.
+// Worker isolates may be cold, but warm isolates serve many sequential events for
+// the same user, so even a short TTL slashes round-trips dramatically.
+type CacheEntry = { value: PendingState; expires: number };
+const PENDING_TTL_MS = 60_000;
+const pendingCache = new Map<string, CacheEntry>();
+
 async function readPending(botUserId: string): Promise<PendingState> {
+  const now = Date.now();
+  const hit = pendingCache.get(botUserId);
+  if (hit && hit.expires > now) return hit.value;
   const { data } = await db().from('bot_users').select('pending_action').eq('id', botUserId).maybeSingle();
-  return isObject(data?.pending_action) ? data.pending_action : {};
+  const value = isObject(data?.pending_action) ? data.pending_action : {};
+  pendingCache.set(botUserId, { value, expires: now + PENDING_TTL_MS });
+  return value;
 }
 
 async function writePending(botUserId: string, pending: PendingState) {
-  await db().from('bot_users').update({ pending_action: pending }).eq('id', botUserId);
+  pendingCache.set(botUserId, { value: pending, expires: Date.now() + PENDING_TTL_MS });
+  const { runAfterResponse } = await import('@/lib/request-context');
+  const p = Promise.resolve(
+    db().from('bot_users').update({ pending_action: pending }).eq('id', botUserId)
+  ).then((r: any) => { if (r?.error) console.error('writePending', r.error); });
+  runAfterResponse(p);
 }
 
 async function editCurrentMessage(

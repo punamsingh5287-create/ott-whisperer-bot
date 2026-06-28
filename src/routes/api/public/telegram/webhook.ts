@@ -30,17 +30,20 @@ export const Route = createFileRoute('/api/public/telegram/webhook')({
         try { update = await request.json(); }
         catch { return new Response('Bad request', { status: 400 }); }
 
-        try {
-          const { handleMessage, handleCallback } = await import('@/lib/telegram/router.server');
-          if (update.message || update.edited_message) {
-            await handleMessage(update.message ?? update.edited_message);
-          } else if (update.callback_query) {
-            await handleCallback(update.callback_query);
+        const { runAfterResponse } = await import('@/lib/request-context');
+        const work = (async () => {
+          try {
+            const { handleMessage, handleCallback } = await import('@/lib/telegram/router.server');
+            if (update.message || update.edited_message) {
+              await handleMessage(update.message ?? update.edited_message);
+            } else if (update.callback_query) {
+              await handleCallback(update.callback_query);
+            }
+          } catch (e) {
+            console.error('telegram webhook error', e);
           }
-        } catch (e) {
-          console.error('telegram webhook error', e);
-          // Return 200 so Telegram does not retry on app bugs
-        }
+        })();
+        runAfterResponse(work);
 
         return Response.json({ ok: true });
       },
