@@ -735,11 +735,10 @@ export async function handleMessage(message: any) {
   }
 
   if (text.startsWith('/start')) {
-    // Delete the user's /start command so the chat stays clean; only the welcome message remains.
-    if (message.message_id) await deleteMessage(chatId, message.message_id).catch(() => {});
     await sendStartMenu(chatId, botUserId, message.from.first_name);
     return;
   }
+
 
 
 
