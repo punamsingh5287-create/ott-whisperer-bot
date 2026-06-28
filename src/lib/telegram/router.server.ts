@@ -1,59 +1,18 @@
 import { db } from './db.server';
 import {
-  sendMessage, sendPhoto, deleteMessage, answerCallback, getMe, getFile, downloadFile,
+  sendMessage, deleteMessage, answerCallback, getMe, getFile, downloadFile,
   type InlineKeyboard,
 } from './gateway.server';
 import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
 import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavState, type RenderedView } from './navigation.server';
 import { LANGS, t, detect, type Lang } from './i18n';
 
-const SPLASH_IMAGE_URL = 'https://ott-whisperer-bot.lovable.app/__l5e/assets-v1/5186d4c0-13a2-486e-b26f-49d284ff121a/nexra-splash.png';
-
 async function sendStartMenu(chatId: number, botUserId: string, name?: string) {
-  const lang = await getUserLang(botUserId);
-  const view = await renderHome(name, lang);
-  // Send photo + persistent reply keyboard in parallel (cuts ~1 RTT)
-  const [photo] = await Promise.all([
-    sendPhoto(chatId, SPLASH_IMAGE_URL, view.text, view.reply_markup),
-    sendMessage(chatId, `⌨️ ${t(lang, 'browse').split('.')[0]}`, { reply_markup: replyKeyboard(lang) }),
-  ]);
-  if (!photo?.ok) {
-    await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
-  }
+  // Clear any previously-set persistent reply keyboard, then show the home view.
+  await sendMessage(chatId, '\u200B', { reply_markup: { remove_keyboard: true } as any });
+  await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
 }
 
-function replyKeyboard(lang: Lang) {
-  return {
-    keyboard: [
-      [{ text: `🚀 ${t(lang, 'open_app')}`, web_app: { url: MINI_APP_URL } }],
-      [{ text: `🗂 ${t(lang, 'categories')}` }, { text: `🔎 ${t(lang, 'search')}` }],
-      [{ text: `🧾 ${t(lang, 'my_orders')}` }, { text: `💰 ${t(lang, 'wallet')}` }],
-      [{ text: `👤 ${t(lang, 'profile')}` }, { text: `🎁 ${t(lang, 'referrals')}` }],
-      [{ text: `💬 ${t(lang, 'support')}` }, { text: `🌐 ${t(lang, 'language')}` }],
-      [{ text: `🏠 ${t(lang, 'home')}` }],
-    ],
-    resize_keyboard: true,
-    is_persistent: true,
-  };
-}
-
-// Match localized reply-keyboard button text → screen
-function matchReplyButton(text: string): NavState | null {
-  const stripped = text.replace(/^[^\p{L}\p{N}]+/u, '').trim().toLowerCase();
-  for (const L of LANGS) {
-    if (stripped === t(L.code, 'categories').toLowerCase()) return { screen: 'categories' };
-    if (stripped === t(L.code, 'search').toLowerCase()) return { screen: 'search' };
-    if (stripped === t(L.code, 'wallet').toLowerCase()) return { screen: 'wallet' };
-    if (stripped === t(L.code, 'my_orders').toLowerCase()) return { screen: 'orders' };
-    if (stripped === t(L.code, 'profile').toLowerCase()) return { screen: 'profile' };
-    if (stripped === t(L.code, 'referrals').toLowerCase()) return { screen: 'referrals' };
-    if (stripped === t(L.code, 'support').toLowerCase()) return { screen: 'support' };
-    if (stripped === t(L.code, 'home').toLowerCase()) return { screen: 'home' };
-    if (stripped === t(L.code, 'language').toLowerCase()) return { screen: 'language' };
-    if (stripped === t(L.code, 'open_app').toLowerCase()) return { screen: 'home' };
-  }
-  return null;
-}
 
 
 type TgUser = { id: number; username?: string; first_name?: string };
@@ -792,12 +751,6 @@ export async function handleMessage(message: any) {
     const q = text.slice(7).trim();
     if (q) await navigateTo({ botUserId, chatId, state: { screen: 'search_results', params: { query: q } }, forceNewMessage: true });
     else await navigateTo({ botUserId, chatId, state: { screen: 'search' }, forceNewMessage: true });
-    return;
-  }
-  // Persistent reply-keyboard buttons
-  const replyHit = matchReplyButton(text);
-  if (replyHit) {
-    await navigateTo({ botUserId, chatId, state: replyHit, name: message.from.first_name, reset: replyHit.screen === 'home', forceNewMessage: true });
     return;
   }
   await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true });
