@@ -52,15 +52,35 @@ async function productEmoji(p: any): Promise<string> {
 /* ─── user upsert ─────────────────────────────────────────────── */
 function genReferralCode(telegramId: number) { return `R${telegramId.toString(36).toUpperCase()}`; }
 
+/* ─── caches (isolate-local, warm-Worker friendly) ───────────── */
+// telegram_id → bot_users.id is stable for the lifetime of the user row.
+const _userIdCache = new Map<number, string>();
+// botUserId → language (TTL since user can change it from another device)
+const _langCache = new Map<string, { lang: Lang; expires: number }>();
+const LANG_TTL_MS = 60_000;
+// settings row is rarely edited
+let _settingsCache: { at: number; row: any } | null = null;
+const SETTINGS_TTL_MS = 60_000;
+
 export async function upsertBotUser(from: TgUser & { language_code?: string }, startPayload?: string): Promise<string> {
   const supabase = db();
+  const cachedId = _userIdCache.get(from.id);
+  if (cachedId) {
+    // Refresh activity in the background — never block the response.
+    bg(supabase.from('bot_users').update({
+      username: from.username ?? null, first_name: from.first_name ?? null,
+      last_active: new Date().toISOString(),
+    }).eq('telegram_id', from.id).then(() => undefined));
+    return cachedId;
+  }
   const { data: existing } = await supabase
     .from('bot_users').select('id').eq('telegram_id', from.id).maybeSingle();
   if (existing) {
-    await supabase.from('bot_users').update({
+    _userIdCache.set(from.id, existing.id as string);
+    bg(supabase.from('bot_users').update({
       username: from.username ?? null, first_name: from.first_name ?? null,
       last_active: new Date().toISOString(),
-    }).eq('telegram_id', from.id);
+    }).eq('telegram_id', from.id).then(() => undefined));
     return existing.id as string;
   }
   let referredBy: string | null = null;
@@ -74,27 +94,38 @@ export async function upsertBotUser(from: TgUser & { language_code?: string }, s
     language: detect(from.language_code),
   }).select('id').single();
   if (error) throw error;
+  _userIdCache.set(from.id, inserted.id as string);
   if (referredBy) {
-    await supabase.from('referrals').insert({
+    bg(supabase.from('referrals').insert({
       referrer_bot_user_id: referredBy, referred_bot_user_id: inserted.id,
-    });
+    }).then(() => undefined));
   }
   return inserted.id as string;
 }
 
 export async function getUserLang(botUserId: string): Promise<Lang> {
+  const now = Date.now();
+  const hit = _langCache.get(botUserId);
+  if (hit && hit.expires > now) return hit.lang;
   const { data } = await db().from('bot_users').select('language').eq('id', botUserId).maybeSingle();
-  return detect((data as any)?.language);
+  const lang = detect((data as any)?.language);
+  _langCache.set(botUserId, { lang, expires: now + LANG_TTL_MS });
+  return lang;
 }
 
 async function setUserLang(botUserId: string, lang: Lang) {
+  _langCache.set(botUserId, { lang, expires: Date.now() + LANG_TTL_MS });
   await db().from('bot_users').update({ language: lang, last_active: new Date().toISOString() }).eq('id', botUserId);
 }
 
 async function getSettings() {
+  if (_settingsCache && Date.now() - _settingsCache.at < SETTINGS_TTL_MS) return _settingsCache.row;
   const { data } = await db().from('settings').select('*').eq('id', 1).maybeSingle();
-  return data ?? { welcome_text: 'Welcome!', support_handle: '@support', site_name: 'OTT Store', bot_username: null };
+  const row = data ?? { welcome_text: 'Welcome!', support_handle: '@support', site_name: 'OTT Store', bot_username: null };
+  _settingsCache = { at: Date.now(), row };
+  return row;
 }
+
 
 /* ─── menus ───────────────────────────────────────────────────── */
 const MINI_APP_URL = process.env.MINI_APP_URL || 'https://ott-whisperer-bot.lovable.app/app';
