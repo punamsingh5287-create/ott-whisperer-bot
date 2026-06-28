@@ -1,6 +1,6 @@
 import { db } from './db.server';
 import {
-  sendMessage, sendPhoto, deleteMessage, answerCallback, getMe, getFile, downloadFile,
+  sendMessage, deleteMessage, answerCallback, getMe, getFile, downloadFile,
   type InlineKeyboard,
 } from './gateway.server';
 import { escapeHtml, e, mkBtn, mkEmojiBtn, premiumEmoji } from './emoji';
