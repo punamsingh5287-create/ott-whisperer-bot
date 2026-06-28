@@ -92,7 +92,7 @@ async function getSettings() {
 }
 
 /* ─── menus ───────────────────────────────────────────────────── */
-const MINI_APP_URL = process.env.MINI_APP_URL || 'https://ott-whisperer-bot.lovable.app/api/public/app';
+const MINI_APP_URL = process.env.MINI_APP_URL || 'https://ott-whisperer-bot.lovable.app/app';
 
 async function mainMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
   const [openApp, cats, search, orders, profile, wallet, ref, support, langBtn, close] = await Promise.all([
