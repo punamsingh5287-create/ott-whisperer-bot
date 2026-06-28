@@ -128,11 +128,9 @@ async function getSettings() {
 
 
 /* ─── menus ───────────────────────────────────────────────────── */
-const MINI_APP_URL = process.env.MINI_APP_URL || 'https://ott-whisperer-bot.lovable.app/app';
 
 async function mainMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
-  const [openApp, cats, search, orders, profile, wallet, ref, support, langBtn, close] = await Promise.all([
-    mkBtn('action_open_app', '🚀', t(lang, 'open_app'), { web_app: { url: MINI_APP_URL } }),
+  const [cats, search, orders, profile, wallet, ref, support, langBtn, close] = await Promise.all([
     mkBtn('menu_categories', '🗂', t(lang, 'categories'), { callback_data: 'menu:cats' }),
     mkBtn('menu_search', '🔎', t(lang, 'search'), { callback_data: 'menu:search' }),
     mkBtn('menu_orders', '🧾', t(lang, 'my_orders'), { callback_data: 'menu:orders' }),
@@ -143,8 +141,9 @@ async function mainMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
     mkBtn('menu_lang', '🌐', t(lang, 'language'), { callback_data: 'menu:lang' }),
     mkBtn('menu_close', '✕', t(lang, 'close'), { callback_data: 'nav:close' }),
   ]);
-  return { inline_keyboard: [[openApp], [cats, search], [orders, wallet], [profile, ref], [support, langBtn], [close]] };
+  return { inline_keyboard: [[cats, search], [orders, wallet], [profile, ref], [support, langBtn], [close]] };
 }
+
 
 async function navRow(lang: Lang = 'en', includeHome = true): Promise<InlineKeyboard['inline_keyboard'][number]> {
   const buttons = [await mkBtn('menu_back', '‹', t(lang, 'back'), { callback_data: 'nav:back' })];
