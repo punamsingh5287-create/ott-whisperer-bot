@@ -8,12 +8,10 @@ import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavStat
 import { LANGS, t, detect, type Lang } from './i18n';
 
 async function sendStartMenu(chatId: number, botUserId: string, name?: string) {
-  // Clear any stale persistent reply keyboard, then show the home inline view.
-  // Telegram requires non-empty text and rejects mixing inline + remove keyboards,
-  // so we send a tiny standalone message that also removes the keyboard.
-  await sendMessage(chatId, '.', { reply_markup: { remove_keyboard: true } as any }).catch(() => {});
+  // Navigate directly to the home inline view; no separate keyboard-removal message needed.
   await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
 }
+
 
 
 
@@ -737,9 +735,12 @@ export async function handleMessage(message: any) {
   }
 
   if (text.startsWith('/start')) {
+    // Delete the user's /start command so the chat stays clean; only the welcome message remains.
+    if (message.message_id) await deleteMessage(chatId, message.message_id).catch(() => {});
     await sendStartMenu(chatId, botUserId, message.from.first_name);
     return;
   }
+
 
 
 
