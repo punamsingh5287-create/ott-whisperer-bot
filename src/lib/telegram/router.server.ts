@@ -23,9 +23,12 @@ async function sendStartMenu(chatId: number, botUserId: string, name?: string) {
 function replyKeyboard(lang: Lang) {
   return {
     keyboard: [
-      [{ text: `🗂 ${t(lang, 'categories')}` }, { text: `💰 ${t(lang, 'wallet')}` }],
-      [{ text: `🧾 ${t(lang, 'my_orders')}` }, { text: `💬 ${t(lang, 'support')}` }],
-      [{ text: `🏠 ${t(lang, 'home')}` }, { text: `🌐 ${t(lang, 'language')}` }],
+      [{ text: `🚀 ${t(lang, 'open_app')}`, web_app: { url: MINI_APP_URL } }],
+      [{ text: `🗂 ${t(lang, 'categories')}` }, { text: `🔎 ${t(lang, 'search')}` }],
+      [{ text: `🧾 ${t(lang, 'my_orders')}` }, { text: `💰 ${t(lang, 'wallet')}` }],
+      [{ text: `👤 ${t(lang, 'profile')}` }, { text: `🎁 ${t(lang, 'referrals')}` }],
+      [{ text: `💬 ${t(lang, 'support')}` }, { text: `🌐 ${t(lang, 'language')}` }],
+      [{ text: `🏠 ${t(lang, 'home')}` }],
     ],
     resize_keyboard: true,
     is_persistent: true,
@@ -37,11 +40,15 @@ function matchReplyButton(text: string): NavState | null {
   const stripped = text.replace(/^[^\p{L}\p{N}]+/u, '').trim().toLowerCase();
   for (const L of LANGS) {
     if (stripped === t(L.code, 'categories').toLowerCase()) return { screen: 'categories' };
+    if (stripped === t(L.code, 'search').toLowerCase()) return { screen: 'search' };
     if (stripped === t(L.code, 'wallet').toLowerCase()) return { screen: 'wallet' };
     if (stripped === t(L.code, 'my_orders').toLowerCase()) return { screen: 'orders' };
+    if (stripped === t(L.code, 'profile').toLowerCase()) return { screen: 'profile' };
+    if (stripped === t(L.code, 'referrals').toLowerCase()) return { screen: 'referrals' };
     if (stripped === t(L.code, 'support').toLowerCase()) return { screen: 'support' };
     if (stripped === t(L.code, 'home').toLowerCase()) return { screen: 'home' };
     if (stripped === t(L.code, 'language').toLowerCase()) return { screen: 'language' };
+    if (stripped === t(L.code, 'open_app').toLowerCase()) return { screen: 'home' };
   }
   return null;
 }
