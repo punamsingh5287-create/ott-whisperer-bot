@@ -12,12 +12,14 @@ const SPLASH_IMAGE_URL = 'https://ott-whisperer-bot.lovable.app/__l5e/assets-v1/
 async function sendStartMenu(chatId: number, botUserId: string, name?: string) {
   const lang = await getUserLang(botUserId);
   const view = await renderHome(name, lang);
-  const photo = await sendPhoto(chatId, SPLASH_IMAGE_URL, view.text, view.reply_markup);
+  // Send photo + persistent reply keyboard in parallel (cuts ~1 RTT)
+  const [photo] = await Promise.all([
+    sendPhoto(chatId, SPLASH_IMAGE_URL, view.text, view.reply_markup),
+    sendMessage(chatId, `⌨️ ${t(lang, 'browse').split('.')[0]}`, { reply_markup: replyKeyboard(lang) }),
+  ]);
   if (!photo?.ok) {
     await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
   }
-  // Persistent reply keyboard at the bottom (always visible quick menu)
-  await sendMessage(chatId, `⌨️ ${t(lang, 'browse').split('.')[0]}`, { reply_markup: replyKeyboard(lang) });
 }
 
 function replyKeyboard(lang: Lang) {
@@ -466,24 +468,32 @@ async function renderPayment(productId: string, network: Network, botUserId: str
 }
 
 /* ─── payment expiry helpers ───────────────────────────────────── */
+let _lastSweepAt = 0;
+let _sweepInFlight: Promise<void> | null = null;
 async function sweepExpiredPayments(): Promise<void> {
-  try {
-    const { data, error } = await db().rpc('expire_stale_payments');
-    if (error || !Array.isArray(data)) return;
-    for (const r of data as any[]) {
-      if (!r?.telegram_id) continue;
-      const lang = detect(r.language);
-      const productLine = r.product_name ? `\n<b>${escapeHtml(String(r.product_name))}</b> — $${r.amount}` : '';
-      try {
-        await sendMessage(r.telegram_id, `${t(lang, 'payment_expired_body')}${productLine}`);
-      } catch (err) { console.error('expire notify failed', err); }
-    }
-  } catch (err) { console.error('sweep failed', err); }
+  // Throttle: at most once per 60s, and never run two in parallel.
+  if (_sweepInFlight) return _sweepInFlight;
+  if (Date.now() - _lastSweepAt < 60_000) return;
+  _lastSweepAt = Date.now();
+  _sweepInFlight = (async () => {
+    try {
+      const { data, error } = await db().rpc('expire_stale_payments');
+      if (error || !Array.isArray(data)) return;
+      for (const r of data as any[]) {
+        if (!r?.telegram_id) continue;
+        const lang = detect(r.language);
+        const productLine = r.product_name ? `\n<b>${escapeHtml(String(r.product_name))}</b> — $${r.amount}` : '';
+        try {
+          await sendMessage(r.telegram_id, `${t(lang, 'payment_expired_body')}${productLine}`);
+        } catch (err) { console.error('expire notify failed', err); }
+      }
+    } catch (err) { console.error('sweep failed', err); }
+    finally { _sweepInFlight = null; }
+  })();
+  return _sweepInFlight;
 }
 
 function scheduleExpiryNotification(_paymentId: string) {
-  // Serverless workers may not keep timers alive; the sweep on next webhook
-  // call is the source of truth. Best-effort timer for long-lived runtimes:
   setTimeout(() => { void sweepExpiredPayments(); }, 5 * 60 * 1000 + 2000);
 }
 
