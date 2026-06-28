@@ -8,8 +8,15 @@ import { closeView, getFlowAction, goBack, setFlowAction, showView, type NavStat
 import { LANGS, t, detect, type Lang } from './i18n';
 
 async function sendStartMenu(chatId: number, botUserId: string, name?: string) {
-  // Navigate directly to the home inline view; no separate keyboard-removal message needed.
+  await clearReplyKeyboard(chatId);
+  // Navigate directly to the home inline view after removing any old reply keyboard.
   await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
+}
+
+async function clearReplyKeyboard(chatId: number) {
+  const cleanup = await sendMessage(chatId, '\u2063', { reply_markup: { remove_keyboard: true } });
+  const cleanupMessageId = cleanup?.result?.message_id;
+  if (cleanupMessageId) await deleteMessage(chatId, cleanupMessageId).catch(() => {});
 }
 
 
@@ -111,7 +118,7 @@ async function mainMenu(lang: Lang = 'en'): Promise<InlineKeyboard> {
 
 async function navRow(lang: Lang = 'en', includeHome = true): Promise<InlineKeyboard['inline_keyboard'][number]> {
   const buttons = [await mkBtn('menu_back', '‹', t(lang, 'back'), { callback_data: 'nav:back' })];
-  if (includeHome) buttons.push(await mkBtn('menu_home', '🏠', t(lang, 'home'), { callback_data: 'menu:home' }));
+  if (includeHome) buttons.push(await mkBtn('menu_home', '⌂', t(lang, 'home'), { callback_data: 'menu:home' }));
   buttons.push(await mkBtn('menu_close', '✕', t(lang, 'close'), { callback_data: 'nav:close' }));
   return buttons;
 }
