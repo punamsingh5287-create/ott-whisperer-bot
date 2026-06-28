@@ -42,7 +42,7 @@ function MiniApp() {
   const buy = (p: Product) => {
     const w = window as any;
     const tg = w.Telegram?.WebApp;
-    const payload = `buy:${p.id}`;
+    const payload = JSON.stringify({ action: 'buy', product_id: p.id });
     if (tg?.sendData) { tg.sendData(payload); tg.close?.(); }
     else alert('Open this inside Telegram to checkout.');
   };
