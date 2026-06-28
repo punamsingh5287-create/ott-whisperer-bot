@@ -78,10 +78,10 @@ async function readPending(botUserId: string): Promise<PendingState> {
 async function writePending(botUserId: string, pending: PendingState) {
   pendingCache.set(botUserId, { value: pending, expires: Date.now() + PENDING_TTL_MS });
   const { runAfterResponse } = await import('@/lib/request-context');
-  runAfterResponse(
+  const p = Promise.resolve(
     db().from('bot_users').update({ pending_action: pending }).eq('id', botUserId)
-      .then(({ error }) => { if (error) console.error('writePending', error); }),
-  );
+  ).then((r: any) => { if (r?.error) console.error('writePending', r.error); });
+  runAfterResponse(p);
 }
 
 async function editCurrentMessage(
