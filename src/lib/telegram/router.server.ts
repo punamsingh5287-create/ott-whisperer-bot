@@ -722,24 +722,8 @@ export async function handleMessage(message: any) {
   const startPayload = text.startsWith('/start') ? text.split(' ')[1] : undefined;
   const botUserId = await upsertBotUser(message.from, startPayload);
 
-  // Mini App → bot data bridge
-  if (message.web_app_data?.data) {
-    let payload: any = null;
-    try { payload = JSON.parse(message.web_app_data.data); } catch { payload = { raw: message.web_app_data.data }; }
-    if (payload?.action === 'buy' && payload.product_id) {
-      await navigateTo({ botUserId, chatId, state: { screen: 'buy', params: { productId: payload.product_id } }, forceNewMessage: true });
-      return;
-    }
-    if (payload?.action === 'lang' && payload.lang) {
-      await setUserLang(botUserId, detect(payload.lang));
-      await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name: message.from.first_name, reset: true, forceNewMessage: true });
-      return;
-    }
-    if (payload?.action === 'deposit') {
-      await navigateTo({ botUserId, chatId, state: { screen: 'wallet' }, forceNewMessage: true });
-      return;
-    }
-  }
+
+
 
   const pending = await getFlowAction<{ type?: string; payment_id?: string }>(botUserId);
 
