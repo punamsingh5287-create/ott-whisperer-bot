@@ -12,12 +12,14 @@ const SPLASH_IMAGE_URL = 'https://ott-whisperer-bot.lovable.app/__l5e/assets-v1/
 async function sendStartMenu(chatId: number, botUserId: string, name?: string) {
   const lang = await getUserLang(botUserId);
   const view = await renderHome(name, lang);
-  const photo = await sendPhoto(chatId, SPLASH_IMAGE_URL, view.text, view.reply_markup);
+  // Send photo + persistent reply keyboard in parallel (cuts ~1 RTT)
+  const [photo] = await Promise.all([
+    sendPhoto(chatId, SPLASH_IMAGE_URL, view.text, view.reply_markup),
+    sendMessage(chatId, `⌨️ ${t(lang, 'browse').split('.')[0]}`, { reply_markup: replyKeyboard(lang) }),
+  ]);
   if (!photo?.ok) {
     await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
   }
-  // Persistent reply keyboard at the bottom (always visible quick menu)
-  await sendMessage(chatId, `⌨️ ${t(lang, 'browse').split('.')[0]}`, { reply_markup: replyKeyboard(lang) });
 }
 
 function replyKeyboard(lang: Lang) {
