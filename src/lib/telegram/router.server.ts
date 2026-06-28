@@ -12,8 +12,21 @@ import { runAfterResponse } from '@/lib/request-context';
 function bg(p: Promise<unknown>) { runAfterResponse(p); }
 
 async function sendStartMenu(chatId: number, botUserId: string, name?: string) {
-  // Navigate directly to home. Avoid sending any cleanup message to prevent flicker/bounce.
+  await removeLegacyReplyKeyboard(chatId);
   await navigateTo({ botUserId, chatId, state: { screen: 'home' }, name, reset: true, forceNewMessage: true });
+}
+
+async function removeLegacyReplyKeyboard(chatId: number) {
+  try {
+    const res = await sendMessage(chatId, '\u2063', {
+      reply_markup: { remove_keyboard: true },
+      disable_notification: true,
+    });
+    const messageId = res?.result?.message_id;
+    if (messageId) bg(deleteMessage(chatId, messageId));
+  } catch (error) {
+    console.error('remove legacy keyboard failed', error);
+  }
 }
 
 
